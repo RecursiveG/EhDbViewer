@@ -330,8 +330,19 @@ void MainWindow::on_btnTestListFullDb_clicked() {
 
 void MainWindow::test1() {
     // ui->labelImagePreview->setPixmap(QPixmap{});
-    qInfo() << "clicked test1";
-    ui->labelImagePreview->setText("test1");
+    // qInfo() << "clicked test1";
+    // ui->labelImagePreview->setText("test1");
+    // QString s = "{\"abc\":[1,2,3]}";
+    QString s = "[1,2,3]";
+    auto json_doc = QJsonDocument::fromJson(s.toUtf8());
+    qInfo() << json_doc["abc"];
+    qInfo() << json_doc["abc"][0];
+    qInfo() << json_doc["abc"]["12"];
+    qInfo() << json_doc[0];
+    qInfo() << json_doc[4];
+    qInfo() << json_doc.object()["s"];
+    qInfo() << json_doc.array().size();
+    qInfo() << json_doc.object().size();
 }
 
 // request data online for the selected item
@@ -357,7 +368,7 @@ void MainWindow::on_btnTestEhRequest_clicked() {
 
     qlonglong gid;
     QString token;
-    auto fetchToken = [this, &gid, &token](SearchResultItem *item) {
+    auto fetchToken = [&gid, &token](SearchResultItem *item) {
         gid = 0;
         token = "";
         if (item->schema().eh_gid.isEmpty())
@@ -370,9 +381,9 @@ void MainWindow::on_btnTestEhRequest_clicked() {
         }
     };
 
-    auto onRequestFinish = [this](std::variant<QJsonDocument, QNetworkReply *> ret) {
+    auto onRequestFinish = [this](std::variant<EhGalleryMetadata, QNetworkReply *> ret) {
         if (ret.index() == 0) {
-            QString s = QString::fromUtf8(std::get<0>(ret).toJson());
+            QString s = std::get<0>(ret).display();
             ui->txtMetadataDisplay->setText(s);
         } else {
             QMessageBox::warning(this, "", "request failed");
