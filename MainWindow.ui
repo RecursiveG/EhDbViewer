@@ -25,7 +25,7 @@
      <widget class="QLineEdit" name="txtSearchBar"/>
     </item>
     <item>
-     <widget class="QSplitter" name="splitter_2">
+     <widget class="QSplitter" name="splitter_main">
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
@@ -43,7 +43,7 @@
         </item>
        </layout>
       </widget>
-      <widget class="QSplitter" name="splitter">
+      <widget class="QSplitter" name="splitter_result_column">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
@@ -122,6 +122,9 @@
          <widget class="QCheckBox" name="cbUseThumbnail">
           <property name="text">
            <string>use_thumbnail</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
           </property>
          </widget>
         </item>

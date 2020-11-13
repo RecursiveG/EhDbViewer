@@ -56,6 +56,9 @@ std::optional<QString> selectSingleFile(QWidget *parent, const QString &title) {
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
+    // resize splitters, it's magic!
+    ui->splitter_main->setSizes({5000, 10000, 1, 10000});
+    ui->splitter_result_column->setSizes({5000, 1000});
 
     // create database tables
     auto db = EhDbViewerDataStore::OpenDatabase().value();
@@ -182,23 +185,57 @@ void MainWindow::updateDetailsView() {
     };
 
     auto updateMetadataDisplay = [this](SearchResultItem *item) {
-        auto db = EhDbViewerDataStore::OpenDatabase().value();
-        QString title = item->schema().title;
-        QString eh_gid;
+        auto display_timestamp = [](int64_t t_s) {
+            QDateTime timestamp;
+            timestamp.setTime_t(t_s);
+            return timestamp.toString("yyyy-MM-dd hh:mm:ss");
+        };
 
-        if (item->schema().eh_gid.isEmpty()) {
-            eh_gid = "N/A";
-        } else {
+        auto db = EhDbViewerDataStore::OpenDatabase().value();
+        QString display = "<table>";
+        auto appendkv = [&display](QString key, QString value, QString alt = "(nodata)") {
+            if (value.isEmpty()) {
+                display += QString("<tr><td><b>%1:</b></td><td><i>%2</i></td></tr>").arg(key).arg(alt);
+            } else {
+                display += QString("<tr><td><b>%1:</b></td><td>%2</td></tr>").arg(key).arg(value);
+            }
+        };
+
+        appendkv("Title", item->schema().title);
+        appendkv("Ehentai GID", item->schema().eh_gid);
+
+        if (!item->schema().eh_gid.isEmpty()) {
             auto em = EhDbViewerDataStore::DbQueryEhMetaByGid(db, item->schema().eh_gid);
             if (!em) {
-                eh_gid = item->schema().eh_gid + " (nodata)";
+                appendkv("EhMetadata", "", "(database error)");
             } else {
-                eh_gid = item->schema().eh_gid + " (ok)";
+                appendkv("EhGid", em->gid);
+                appendkv("EhToken", em->token);
+                appendkv("EhTitle", em->title);
+                appendkv("EhTitleJpn", em->title_jpn);
+                appendkv("EhCategory#", QString::number(em->category));
+                appendkv("EhCategory", QString::fromStdString(EhentaiApi::CategoryToString(em->category)));
+                appendkv("EhThumb", em->thumb);
+                appendkv("EhUploader", em->uploader);
+                appendkv("EhPostedDate", display_timestamp(em->posted));
+                appendkv("EhFileCount", QString::number(em->filecount));
+                appendkv("EhFilesize", QString::number(em->filesize));
+                appendkv("EhExpunged", QString::number(em->expunged));
+                appendkv("EhRating", QString::number(em->rating));
+                appendkv("MetaUpdated", display_timestamp(em->meta_updated));
+
+                // list tags
+                auto tags = EhDbViewerDataStore::DbQueryEhTagsByGid(db, em->gid);
+                if (!tags) {
+                    appendkv("EhTags", "", "(database error)");
+                } else {
+                    appendkv("EhTags", tags->join(", "), "(no tag)");
+                }
             }
         }
 
-        QString fmt = "Title: %1\nE-Hentai gid: %2";
-        ui->txtMetadataDisplay->setText(fmt.arg(title).arg(eh_gid));
+        display += "</table>";
+        ui->txtMetadataDisplay->setText(display);
     };
 
     auto item = getCurrentItem();
@@ -328,22 +365,7 @@ void MainWindow::on_btnTestListFullDb_clicked() {
     }
 }
 
-void MainWindow::test1() {
-    // ui->labelImagePreview->setPixmap(QPixmap{});
-    // qInfo() << "clicked test1";
-    // ui->labelImagePreview->setText("test1");
-    // QString s = "{\"abc\":[1,2,3]}";
-    QString s = "[1,2,3]";
-    auto json_doc = QJsonDocument::fromJson(s.toUtf8());
-    qInfo() << json_doc["abc"];
-    qInfo() << json_doc["abc"][0];
-    qInfo() << json_doc["abc"]["12"];
-    qInfo() << json_doc[0];
-    qInfo() << json_doc[4];
-    qInfo() << json_doc.object()["s"];
-    qInfo() << json_doc.array().size();
-    qInfo() << json_doc.object().size();
-}
+void MainWindow::test1() {}
 
 // request data online for the selected item
 void MainWindow::on_btnTestEhRequest_clicked() {

@@ -141,7 +141,7 @@ bool EhDbViewerDataStore::DbCreateTables(QSqlDatabase &db) {
                                     token text not null,
                                     title text not null,
                                     title_jpn text not null, -- empty string if no jpn title
-                                    category integer not null, -- category, 0 for unknown,
+                                    category text not null, -- category, see EhentaiApi for possible values.
                                     thumb text not null,
                                     uploader text not null, -- uploader name, empty if unknown
                                     posted integer not null, -- unix timestamp second
@@ -370,7 +370,8 @@ std::optional<schema::EhentaiMetadata> DbQueryEhMetaInternal(QSqlQuery &query) {
             .token = query.value("token").toString(),
             .title = query.value("title").toString(),
             .title_jpn = query.value("title_jpn").toString(),
-            .category = query.value("category").toLongLong(),
+            .category = EhentaiApi::CategoryFromString(query.value("category").toString().toStdString())
+                            .value_or(EhCategory::UNKNOWN),
             .thumb = query.value("thumb").toString(),
             .uploader = query.value("uploader").toString(),
             .posted = query.value("posted").toLongLong(),
@@ -409,6 +410,31 @@ std::optional<schema::EhentaiMetadata> EhDbViewerDataStore::DbQueryEhMetaByFid(Q
     }
     query.addBindValue(QString::number(fid));
     return DbQueryEhMetaInternal(query);
+}
+
+std::optional<QStringList> EhDbViewerDataStore::DbQueryEhTagsByGid(QSqlDatabase &db, QString gid) {
+    QElapsedTimer timer;
+    timer.start();
+    QSqlQuery query{db};
+    QString sql = "SELECT tag FROM ehentai_tags WHERE gid=?";
+    if (!query.prepare(sql)) {
+        qCritical() << query.lastError();
+        return {};
+    }
+    query.addBindValue(gid);
+    if (!query.exec()) {
+        qCritical() << query.lastError();
+        return {};
+    }
+
+    QStringList ret;
+    while (query.next()) {
+        QString tag = query.value(0).toString();
+        if (!tag.isEmpty())
+            ret << tag;
+    }
+    qInfo() << "DbQueryEhTagsByGid() completed in " << timer.elapsed() << "ms";
+    return ret;
 }
 
 bool EhDbViewerDataStore::DbInsert(QSqlDatabase &db, schema::ImageFolders data) {
@@ -455,7 +481,7 @@ bool EhDbViewerDataStore::DbInsert(QSqlDatabase &db, schema::EhentaiMetadata dat
     query.addBindValue(data.token);
     query.addBindValue(data.title);
     query.addBindValue(data.title_jpn);
-    query.addBindValue(data.category);
+    query.addBindValue(QString::fromStdString(EhentaiApi::CategoryToString(data.category)));
     query.addBindValue(data.thumb);
     query.addBindValue(data.uploader);
     query.addBindValue(data.posted);
@@ -515,7 +541,8 @@ std::optional<QList<schema::EhBackupImport>> EhDbViewerDataStore::EhBakDbImport(
             .title = query.value("title").toString().toStdString(),
             .title_jpn = query.value("title_jpn").toString().toStdString(),
             .thumb = query.value("thumb").toString().toStdString(),
-            .category = query.value("category").toInt(),
+            .category =
+                EhentaiApi::CategoryFromEhViewerValue(query.value("category").toInt()).value_or(EhCategory::UNKNOWN),
             .posted = query.value("posted").toString().toStdString(),
             .uploader = query.value("uploader").toString().toStdString(),
             .rating = query.value("rating").toDouble(),

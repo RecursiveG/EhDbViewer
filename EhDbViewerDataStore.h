@@ -1,6 +1,7 @@
 #ifndef EHDBVIEWERDATASTORE_H
 #define EHDBVIEWERDATASTORE_H
 
+#include <EhentaiApi.h>
 #include <QDir>
 #include <QSettings>
 #include <QStringList>
@@ -32,7 +33,7 @@ struct EhentaiMetadata {
     QString token;
     QString title;
     QString title_jpn;
-    qlonglong category;
+    EhCategory category;
     QString thumb;
     QString uploader;
     qlonglong posted; // unix timestamp, second
@@ -60,7 +61,9 @@ struct EhBackupImport {
     std::string title;
     std::string title_jpn;
     std::string thumb;
-    int64_t category;
+    // https://github.com/seven332/EhViewer/blob/master/app/src/main/java/com/hippo/ehviewer/client/EhConfig.java#L282
+    // EhViewer uses bitfields
+    EhCategory category;
     std::string posted; // e.g. 2008-04-06 18:13
     std::string uploader;
     double rating;
@@ -107,6 +110,7 @@ class EhDbViewerDataStore {
     static std::optional<schema::CoverImages> DbQueryCoverImages(QSqlDatabase &db, int64_t fid);
     static std::optional<schema::EhentaiMetadata> DbQueryEhMetaByGid(QSqlDatabase &db, QString gid);
     static std::optional<schema::EhentaiMetadata> DbQueryEhMetaByFid(QSqlDatabase &db, int64_t fid);
+    static std::optional<QStringList> DbQueryEhTagsByGid(QSqlDatabase &db, QString gid);
 
     // return false if error
     static bool DbInsert(QSqlDatabase &db, schema::ImageFolders data);

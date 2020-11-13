@@ -67,6 +67,7 @@ class EhentaiApi {
     static std::string CategoryToString(EhCategory c);
     static std::optional<EhCategory> CategoryFromString(std::string val);
     static int CategoryToEhViewerValue(EhCategory c);
+    // Input value is EhViewer's bitfield representation.
     static std::optional<EhCategory> CategoryFromEhViewerValue(int val);
 
     template <typename ReturnT> using Callback = std::function<void(std::variant<ReturnT, QNetworkReply *>)>;

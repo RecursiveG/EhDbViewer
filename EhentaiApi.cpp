@@ -155,13 +155,16 @@ std::optional<EhCategory> EhentaiApi::CategoryFromString(std::string val) {
 
 int EhentaiApi::CategoryToEhViewerValue(EhCategory c) {
     if (c >= MISC && c <= WESTERN)
-        return c;
+        return 1 << (c - 1);
     return 0;
 }
 
 std::optional<EhCategory> EhentaiApi::CategoryFromEhViewerValue(int val) {
-    if (val >= MISC && val <= WESTERN)
-        return EhCategory(val);
+    int bit = __builtin_ctz(val) + 1;
+    if (val - (1 << (bit - 1)) != 0)
+        qWarning() << "Lossy convertion from EhViewer category value" << val;
+    if (bit >= MISC && bit <= WESTERN)
+        return EhCategory(bit);
     return {};
 }
 
