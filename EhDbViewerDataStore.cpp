@@ -496,6 +496,73 @@ bool EhDbViewerDataStore::DbInsert(QSqlDatabase &db, schema::EhentaiMetadata dat
     return success;
 }
 
+bool EhDbViewerDataStore::DbInsertReqTransaction(QSqlDatabase &db, const EhGalleryMetadata &data) {
+    schema::EhentaiMetadata d{
+        .gid = QString::number(data.gid),
+        .token = QString::fromStdString(data.token),
+        .title = QString::fromStdString(data.title),
+        .title_jpn = QString::fromStdString(data.title_jpn),
+        .category = data.category,
+        .thumb = QString::fromStdString(data.thumb),
+        .uploader = QString::fromStdString(data.uploader),
+        .posted = data.posted,
+        .filecount = data.filecount,
+        .filesize = data.filesize,
+        .expunged = data.expunged,
+        .rating = data.rating,
+        .meta_updated = data.fetched_time,
+    };
+    QStringList new_tag_list;
+    for (const auto &s : data.tags)
+        new_tag_list << QString::fromStdString(s);
+
+    QSqlQuery del_query{db};
+    if (!del_query.prepare("DELETE FROM ehentai_metadata WHERE gid=?")) {
+        qCritical() << del_query.lastError();
+        return false;
+    }
+    del_query.addBindValue(d.gid);
+    if (!del_query.exec()) {
+        qCritical() << del_query.lastError();
+        return false;
+    }
+    if (!DbInsert(db, d))
+        return false;
+    return DbReplaceEhTagsReqTransaction(db, d.gid, new_tag_list);
+}
+
+bool EhDbViewerDataStore::DbReplaceEhTagsReqTransaction(QSqlDatabase &db, QString gid, QStringList tags) {
+    QSqlQuery del_query{db};
+    if (!del_query.prepare("DELETE FROM ehentai_tags WHERE gid=?")) {
+        qCritical() << del_query.lastError();
+        return false;
+    }
+    del_query.addBindValue(gid);
+    if (!del_query.exec()) {
+        qCritical() << del_query.lastError();
+        return false;
+    }
+
+    QSqlQuery insert_query{db};
+    if (!insert_query.prepare("INSERT INTO ehentai_tags(gid,tag) VALUES(?,?)")) {
+        qCritical() << insert_query.lastError();
+        return false;
+    }
+    insert_query.bindValue(0, gid);
+    for (auto s : tags) {
+        insert_query.bindValue(1, s);
+        if (!insert_query.exec()) {
+            qCritical() << insert_query.lastError();
+            return false;
+        }
+        if (insert_query.numRowsAffected() != 1) {
+            qCritical() << "inserted but only affect" << insert_query.numRowsAffected() << "rows";
+            return false;
+        }
+    }
+    return true;
+}
+
 std::optional<QString> EhDbViewerDataStore::DbTransaction(std::function<bool(QSqlDatabase *)> f,
                                                           QString connection_name) {
     auto db = OpenDatabase(connection_name).value();

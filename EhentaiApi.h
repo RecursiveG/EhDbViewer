@@ -57,6 +57,7 @@ struct EhGalleryMetadata {
     std::vector<EhTorrentMetadata> torrents;
     std::string uploader;
 
+    int64_t fetched_time; // unix timestamp in seconds.
     bool isValid();
     QString display() const;
     static std::optional<EhGalleryMetadata> parse(const QJsonObject &obj);

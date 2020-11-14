@@ -407,6 +407,18 @@ void MainWindow::on_btnTestEhRequest_clicked() {
         if (ret.index() == 0) {
             QString s = std::get<0>(ret).display();
             ui->txtMetadataDisplay->setText(s);
+
+            std::optional<QString> transaction_msg =
+                EhDbViewerDataStore::DbTransaction([&ret](QSqlDatabase *db) -> bool {
+                    if (!EhDbViewerDataStore::DbInsertReqTransaction(*db, std::get<0>(ret))) {
+                        qCritical() << "failed to update eh metadata in db";
+                        return false;
+                    } else {
+                        return true;
+                    }
+                });
+            if (transaction_msg)
+                qCritical() << "db transaction failure:" << *transaction_msg;
         } else {
             QMessageBox::warning(this, "", "request failed");
         }

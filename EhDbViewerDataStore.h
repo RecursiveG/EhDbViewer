@@ -116,6 +116,9 @@ class EhDbViewerDataStore {
     static bool DbInsert(QSqlDatabase &db, schema::ImageFolders data);
     static bool DbInsert(QSqlDatabase &db, schema::CoverImages data);
     static bool DbInsert(QSqlDatabase &db, schema::EhentaiMetadata data);
+    // require the caller to warp db in a transaction.
+    static bool DbInsertReqTransaction(QSqlDatabase &db, const EhGalleryMetadata &data);
+    static bool DbReplaceEhTagsReqTransaction(QSqlDatabase &db, QString gid, QStringList tags);
 
     // the inner function should return true if need submission, or false for rollback
     // the function returns a string if anything is wrong with the transaction.

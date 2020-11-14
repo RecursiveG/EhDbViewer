@@ -237,6 +237,7 @@ void EhentaiApi::GalleryMetadata(QNetworkAccessManager *nm, int64_t gid, QString
             }
             auto maybe_metadata = EhGalleryMetadata::parse(meta);
             if (maybe_metadata) {
+                maybe_metadata->fetched_time = QDateTime::currentSecsSinceEpoch();
                 cb(maybe_metadata.value());
             } else {
                 cb(reply);
