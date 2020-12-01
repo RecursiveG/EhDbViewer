@@ -265,15 +265,24 @@ std::optional<QMap<int64_t, QStringList>> EhDbViewerDataStore::DbListSearchKeywo
 }
 
 namespace {
+// forall re in regex, exists kw in kws s.t. re matches kw
 bool MatchesAll(const QStringList &kws, const std::vector<QRegExp> &regex) {
-    for (const QString &s : kws) {
-        for (const auto &r : regex) {
-            if (r.indexIn(s) < 0)
-                return false;
+    for (const auto &r : regex) {
+        bool has_kw_match = false;
+        for (const QString &s : kws) {
+            if (r.indexIn(s) >= 0) {
+                has_kw_match = true;
+                break;
+            }
         }
+        if (!has_kw_match)
+            return false;
     }
+
     return true;
 }
+
+// exists kw in kws, exists re in regex s.t. re matches kw
 bool MatchesAny(const QStringList &kws, const std::vector<QRegExp> &regex) {
     for (const QString &s : kws) {
         for (const auto &r : regex) {
