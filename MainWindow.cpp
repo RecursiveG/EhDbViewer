@@ -254,6 +254,38 @@ void MainWindow::on_tableSearchResult_doubleClicked(const QModelIndex &index) {
     assert(QDesktopServices::openUrl(QUrl::fromLocalFile(path)));
 }
 
+// open the search result context menu
+void MainWindow::on_tableSearchResult_customContextMenuRequested(const QPoint &pos) {
+    auto buildContextMenu = [this]() {
+        QList<SearchResultItem *> selected_items;
+        auto sel = ui->tableSearchResult->selectionModel();
+        for (const auto &model_index : sel->selectedRows()) {
+            int row = model_index.row();
+            auto *item = dynamic_cast<SearchResultItem *>(search_result_model_->item(row));
+            assert(item);
+            selected_items << item;
+            qDebug() << "selected item: " << item->schema().title;
+        }
+
+        QMenu *menu = new QMenu(this);
+        auto *open_dir_action = new QAction("Open in File Explorer", this);
+        menu->addAction(open_dir_action);
+
+        if (selected_items.size() > 0) {
+            connect(open_dir_action, &QAction::triggered, this, [selected_items]() {
+                for (auto item : selected_items) {
+                    assert(QDesktopServices::openUrl(QUrl::fromLocalFile(item->schema().folder_path)));
+                }
+            });
+        } else {
+            open_dir_action->setEnabled(false);
+        }
+        return menu;
+    };
+
+    buildContextMenu()->popup(ui->tableSearchResult->viewport()->mapToGlobal(pos));
+}
+
 // user initiated search. record history, update search results
 void MainWindow::on_txtSearchBar_returnPressed() {
     QString query = ui->txtSearchBar->text();

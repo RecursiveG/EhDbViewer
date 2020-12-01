@@ -28,6 +28,7 @@ class MainWindow : public QMainWindow {
 
     void on_txtSearchBar_returnPressed();
     void on_tableSearchResult_doubleClicked(const QModelIndex &index);
+    void on_tableSearchResult_customContextMenuRequested(const QPoint &pos);
     void on_btnOpenSelectedFolder_clicked();
 
   private slots:
