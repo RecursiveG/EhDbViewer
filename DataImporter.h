@@ -15,7 +15,7 @@ class DataImporter {
 
     // Import may success or fail. Return the final message
     static QString ImportDir(QDir dir, QWidget *parent);
-    static QString ImportEhViewerBackup(QString db_file, QDir download_dir, QWidget *parent);
+    static QString ImportEhViewerBackup(QStringList db_files, QDir download_dir, QWidget *parent);
 
   protected:
     struct FolderData {

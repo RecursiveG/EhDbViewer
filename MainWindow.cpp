@@ -105,8 +105,8 @@ void MainWindow::on_actionImportFolder_triggered() {
 }
 
 void MainWindow::on_actionImportEhViewerBackup_triggered() {
-    QString db_filepath = QFileDialog::getOpenFileName(this, "Select EhViweer DB file", "Database file (*.db)");
-    if (db_filepath.isEmpty()) {
+    QStringList db_filepaths = QFileDialog::getOpenFileNames(this, "Select EhViewer DB files", "Database file (*.db)");
+    if (db_filepaths.isEmpty()) {
         ui->statusbar->showMessage("Backup file selection cancelled.", 5000);
         return;
     }
@@ -115,9 +115,9 @@ void MainWindow::on_actionImportEhViewerBackup_triggered() {
         ui->statusbar->showMessage("Folder selection cancelled.", 5000);
         return;
     }
-    qDebug() << db_filepath;
+    qDebug() << db_filepaths;
     qDebug() << download_dir;
-    auto msg = DataImporter::ImportEhViewerBackup(db_filepath, download_dir, this);
+    auto msg = DataImporter::ImportEhViewerBackup(db_filepaths, download_dir, this);
     QMessageBox::information(this, "Import EhViewer backup", msg);
 }
 

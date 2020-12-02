@@ -203,21 +203,41 @@ void DataImporter::SelectThumbnailInFolder(QString dir, QString *filename_out, Q
     }
 }
 
-QString DataImporter::ImportEhViewerBackup(QString db_file, QDir download_dir, QWidget *parent) {
+QString DataImporter::ImportEhViewerBackup(QStringList db_files, QDir download_dir, QWidget *parent) {
     // sanity check
     qDebug() << "worker running...";
     if (!download_dir.exists()) {
         return "invalid download dir";
     }
 
-    // connect to db
-    auto ehdb = EhDbViewerDataStore::OpenDatabase(db_file, "ehviewer-db-import");
-    if (!ehdb) {
-        return "failed to open eh db file";
+    // load all ehviewer db entries
+    QMap<int64_t, schema::EhBackupImport> ehv_entries;
+    for (QString db_file : db_files) {
+        QString fault_message = "";
+        {
+            std::optional<QSqlDatabase> ehdb = EhDbViewerDataStore::OpenDatabase(db_file, "ehviewer-db-import");
+            if (!ehdb) {
+                return "failed to open eh db file";
+            }
+
+            // read from backup
+            auto ehdb_data = EhDbViewerDataStore::EhBakDbImport(&*ehdb);
+            if (!ehdb_data) {
+                fault_message = "Error: failed to read ehviewer database";
+            } else {
+                for (const schema::EhBackupImport &entry : *ehdb_data) {
+                    ehv_entries.insert(entry.gid, entry);
+                }
+            }
+            ehdb->close();
+        }
+        QSqlDatabase::removeDatabase("ehviewer-db-import");
+        if (!fault_message.isEmpty())
+            return fault_message;
     }
 
     QString ret;
-    auto transaction_err = EhDbViewerDataStore::DbTransaction([parent, &ret, &ehdb,
+    auto transaction_err = EhDbViewerDataStore::DbTransaction([parent, &ret, &ehv_entries,
                                                                download_dir](QSqlDatabase *db) -> bool {
         // progress dialog
         QProgressDialog progress("", "Abort", 0, 0, parent);
@@ -232,26 +252,19 @@ QString DataImporter::ImportEhViewerBackup(QString db_file, QDir download_dir, Q
         progress.setLabelText("Importing backup");
         QApplication::processEvents();
 
-        // read from backup
-        auto ehdb_data = EhDbViewerDataStore::EhBakDbImport(&*ehdb);
-        if (!ehdb_data) {
-            ret = "Error: failed to read ehviewer database";
-            return false;
-        }
-
         // filter out records if it's already in db
         auto db_folders = EhDbViewerDataStore::DbListAllFolders(*db);
         if (!db_folders) {
             ret = "Error: DbListAllFolders() failed";
             return false;
         }
-        std::vector<schema::EhBackupImport> new_list;
-        for (const schema::EhBackupImport &eh_data : *ehdb_data) {
+        std::vector<schema::EhBackupImport> new_entries;
+        for (const schema::EhBackupImport &eh_data : ehv_entries.values()) {
             QDir dir{download_dir.filePath(QString::fromStdString(eh_data.dirname))};
             if (!db_folders->contains(dir.absolutePath()))
-                new_list.push_back(eh_data);
+                new_entries.push_back(eh_data);
         }
-        progress.setMaximum(new_list.size());
+        progress.setMaximum(new_entries.size());
         progress.setValue(0);
 
         // insert to db
@@ -264,7 +277,7 @@ QString DataImporter::ImportEhViewerBackup(QString db_file, QDir download_dir, Q
 
         int64_t next_fid = *count + 1;
         int64_t processed = 0;
-        for (schema::EhBackupImport &eh_data : new_list) {
+        for (schema::EhBackupImport &eh_data : new_entries) {
             if (progress.wasCanceled()) {
                 ret = "Error: user cancelled";
                 return false;
@@ -328,10 +341,9 @@ QString DataImporter::ImportEhViewerBackup(QString db_file, QDir download_dir, Q
             progress.setValue(++processed);
         }
 
-        ret = QString("Import complete: %1 new folders are imported").arg(new_list.size());
+        ret = QString("Import complete: %1 new folders are imported").arg(new_entries.size());
         return true;
     });
-    ehdb->close();
 
     if (transaction_err) {
         return QString("Error: %1").arg(*transaction_err);
