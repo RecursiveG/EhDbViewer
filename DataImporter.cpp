@@ -162,6 +162,7 @@ QString DataImporter::ImportDir(QDir dir, QWidget *parent) {
             if (!EhDbViewerDataStore::DbInsert(*db, schema::ImageFolders{.fid = fid,
                                                                          .folder_path = folder.folder.absolutePath(),
                                                                          .title = folder.folder.dirName(),
+                                                                         //.record_time = // TODO,
                                                                          .eh_gid = ""})) {
                 ret = "Error: failed to insert to db";
                 return false;
@@ -200,6 +201,17 @@ void DataImporter::SelectThumbnailInFolder(QString dir, QString *filename_out, Q
                 return;
             }
         }
+    }
+}
+
+// Convert EhViewer time value "2008-08-10 03:29" to timestamp
+int64_t EhViewerTimeToStamp(QString str) {
+    QDateTime time = QDateTime::fromString(str, "yyyy-MM-dd hh:mm");
+    if (time.isValid()) {
+        return time.toSecsSinceEpoch();
+    } else {
+        qWarning() << "invalid timestamp in ehviewer db:" << str;
+        return -1;
     }
 }
 
@@ -304,10 +316,14 @@ QString DataImporter::ImportEhViewerBackup(QStringList db_files, QDir download_d
             qlonglong this_fid = next_fid++;
 
             std::string title = eh_data.title_jpn.empty() ? eh_data.title : eh_data.title_jpn;
-            if (!EhDbViewerDataStore::DbInsert(*db, schema::ImageFolders{.fid = this_fid,
-                                                                         .folder_path = dir.absolutePath(),
-                                                                         .title = QString::fromStdString(title),
-                                                                         .eh_gid = QString::number(eh_data.gid)})) {
+            if (!EhDbViewerDataStore::DbInsert(
+                    *db, schema::ImageFolders{
+                             .fid = this_fid,
+                             .folder_path = dir.absolutePath(),
+                             .title = QString::fromStdString(title),
+                             .record_time = EhViewerTimeToStamp(QString::fromStdString(eh_data.posted)),
+                             .eh_gid = QString::number(eh_data.gid),
+                         })) {
                 ret = "failed to insert to img_folders";
                 return false;
             }
@@ -318,21 +334,22 @@ QString DataImporter::ImportEhViewerBackup(QStringList db_files, QDir download_d
                 return false;
             }
 
-            if (!EhDbViewerDataStore::DbInsert(*db, schema::EhentaiMetadata{
-                                                        .gid = QString::number(eh_data.gid),
-                                                        .token = QString::fromStdString(eh_data.token),
-                                                        .title = QString::fromStdString(eh_data.title),
-                                                        .title_jpn = QString::fromStdString(eh_data.title_jpn),
-                                                        .category = eh_data.category,
-                                                        .thumb = QString::fromStdString(eh_data.thumb),
-                                                        .uploader = QString::fromStdString(eh_data.uploader),
-                                                        .posted = 0,
-                                                        .filecount = 0,
-                                                        .filesize = 0,
-                                                        .expunged = -1,
-                                                        .rating = eh_data.rating,
-                                                        .meta_updated = 0,
-                                                    })) {
+            if (!EhDbViewerDataStore::DbInsert(
+                    *db, schema::EhentaiMetadata{
+                             .gid = QString::number(eh_data.gid),
+                             .token = QString::fromStdString(eh_data.token),
+                             .title = QString::fromStdString(eh_data.title),
+                             .title_jpn = QString::fromStdString(eh_data.title_jpn),
+                             .category = eh_data.category,
+                             .thumb = QString::fromStdString(eh_data.thumb),
+                             .uploader = QString::fromStdString(eh_data.uploader),
+                             .posted = EhViewerTimeToStamp(QString::fromStdString(eh_data.posted)),
+                             .filecount = 0,
+                             .filesize = 0,
+                             .expunged = -1,
+                             .rating = eh_data.rating,
+                             .meta_updated = 0,
+                         })) {
                 ret = "failed to insert to ehentai_metadata";
                 return false;
             }

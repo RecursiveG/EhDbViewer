@@ -202,6 +202,7 @@ void MainWindow::updateDetailsView() {
         };
 
         appendkv("Title", item->schema().title);
+        appendkv("RecordTime", display_timestamp(item->schema().record_time));
         appendkv("Ehentai GID", item->schema().eh_gid);
 
         if (!item->schema().eh_gid.isEmpty()) {

@@ -88,6 +88,7 @@ bool EhDbViewerDataStore::DbCreateTables(QSqlDatabase &db) {
                                     fid integer primary key,            -- folder id, auto increment
                                     folder_path text unique not null,   -- full path
                                     title text not null,                -- display title
+                                    record_time integer not null,       -- time when this item is created, usually mtime, use ehentai_metadata.posted if possible
                                     eh_gid text not null                -- empty string means no eh data, foreign key for ehentai_metadata.gid
                                 )
                                 )_SQL_");
@@ -195,7 +196,7 @@ std::optional<QList<schema::FolderPreview>> EhDbViewerDataStore::DbListAllFolder
     timer.start();
     QList<schema::FolderPreview> ret;
     QSqlQuery query{db};
-    if (!query.exec("SELECT img_folders.fid as fid, folder_path, title, cover_base64, eh_gid "
+    if (!query.exec("SELECT img_folders.fid as fid, folder_path, title, record_time, cover_base64, eh_gid "
                     "FROM img_folders LEFT JOIN cover_images "
                     "ON img_folders.fid == cover_images.fid")) {
         qCritical() << "select join failed" << query.lastError();
@@ -207,6 +208,7 @@ std::optional<QList<schema::FolderPreview>> EhDbViewerDataStore::DbListAllFolder
             .fid = query.value("fid").toLongLong(),
             .folder_path = query.value("folder_path").toString(),
             .title = query.value("title").toString(),
+            .record_time = query.value("record_time").toLongLong(),
             .cover_base64 = query.value("cover_base64").toString(),
             .eh_gid = query.value("eh_gid").toString(),
         };
@@ -448,13 +450,14 @@ std::optional<QStringList> EhDbViewerDataStore::DbQueryEhTagsByGid(QSqlDatabase 
 
 bool EhDbViewerDataStore::DbInsert(QSqlDatabase &db, schema::ImageFolders data) {
     QSqlQuery query{db};
-    if (!query.prepare("INSERT INTO img_folders(fid, folder_path, title, eh_gid) VALUES(?,?,?,?)")) {
+    if (!query.prepare("INSERT INTO img_folders(fid, folder_path, title, record_time, eh_gid) VALUES(?,?,?,?,?)")) {
         qCritical() << query.lastError();
         return false;
     }
     query.addBindValue(qlonglong(data.fid));
     query.addBindValue(data.folder_path);
     query.addBindValue(data.title);
+    query.addBindValue(qlonglong(data.record_time));
     query.addBindValue(data.eh_gid);
     bool success = query.exec();
     if (!success)

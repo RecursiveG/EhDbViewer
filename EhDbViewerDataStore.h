@@ -16,6 +16,7 @@ struct ImageFolders {
     int64_t fid; // folder id
     QString folder_path;
     QString title;
+    int64_t record_time;
     QString eh_gid;
 };
 
@@ -50,6 +51,7 @@ struct FolderPreview {
     int64_t fid;
     QString folder_path;
     QString title;
+    int64_t record_time;
     QString cover_base64;
     QString eh_gid;
 };
