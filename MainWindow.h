@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "AspectRatioLabel.h"
 #include "DataImporter.h"
 #include "EhDbViewerDataStore.h"
 #include <QMainWindow>
@@ -41,6 +42,7 @@ class MainWindow : public QMainWindow {
     void updateDetailsView();
 
     Ui::MainWindow *ui;
+    AspectRatioLabel *preview_label_;
     QStandardItemModel *search_result_model_;
     QStandardItemModel *search_history_model_;
     QNetworkAccessManager *network_manager_;

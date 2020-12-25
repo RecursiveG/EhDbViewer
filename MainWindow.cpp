@@ -72,12 +72,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->tableSearchResult->setColumnWidth(0, ui->tableSearchResult->width());
 
     // setup image preview label
-    ui->labelImagePreview->setBackgroundRole(QPalette::Base);
-    ui->labelImagePreview->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->labelImagePreview->setScaledContents(true);
-    ui->scrollImagePreview->setBackgroundRole(QPalette::Dark);
-    ui->scrollImagePreview->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    ui->labelImagePreview->setAlignment(Qt::AlignCenter);
+    preview_label_ = new AspectRatioLabel(ui->imagePreviewLayoutWidget);
+    preview_label_->setScaledContents(true);
+    preview_label_->setMinimumSize(100, 1);
+    preview_label_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    ui->imagePreviewLayout->addWidget(preview_label_);
 
     // TODO
     network_manager_ = new QNetworkAccessManager(this);
@@ -157,11 +156,10 @@ void MainWindow::updateDetailsView() {
                 // TODO error,
                 return;
             }
-            ui->labelImagePreview->setPixmap(pixmap);
-            ui->labelImagePreview->resize(pixmap.size());
+            preview_label_->setPixmap(pixmap);
         } else {
-            ui->labelImagePreview->setText("Loading...");
-            ui->labelImagePreview->resize(ui->scrollImagePreview->size());
+            preview_label_->setPixmap({});
+            preview_label_->setText("Loading...");
             QApplication::processEvents();
             // QThread::sleep(1);
 
@@ -179,8 +177,7 @@ void MainWindow::updateDetailsView() {
                 // TODO error message
                 return;
             }
-            ui->labelImagePreview->setPixmap(pixmap);
-            ui->labelImagePreview->resize(pixmap.size());
+            preview_label_->setPixmap(pixmap);
         }
     };
 

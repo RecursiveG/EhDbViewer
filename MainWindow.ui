@@ -29,7 +29,7 @@
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
-      <widget class="QWidget" name="layoutWidget">
+      <widget class="QWidget" name="verticalLayoutWidget">
        <layout class="QVBoxLayout" name="verticalLayout">
         <item>
          <widget class="QLabel" name="label">
@@ -58,7 +58,7 @@
          <bool>false</bool>
         </attribute>
        </widget>
-       <widget class="QWidget" name="layoutWidget">
+       <widget class="QWidget" name="layoutWidget2">
         <layout class="QVBoxLayout" name="verticalLayout_3">
          <item>
           <widget class="QLabel" name="label_2">
@@ -77,7 +77,7 @@
         </layout>
        </widget>
       </widget>
-      <widget class="QWidget" name="layoutWidget">
+      <widget class="QWidget" name="layoutWidget3">
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
          <widget class="QPushButton" name="btnTestListFullDb">
@@ -146,48 +146,13 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="layoutWidget">
-       <layout class="QVBoxLayout" name="verticalLayout_5">
+      <widget class="QWidget" name="imagePreviewLayoutWidget">
+       <layout class="QVBoxLayout" name="imagePreviewLayout">
         <item>
          <widget class="QLabel" name="label_3">
           <property name="text">
            <string>Image Preview</string>
           </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QScrollArea" name="scrollImagePreview">
-          <property name="widgetResizable">
-           <bool>true</bool>
-          </property>
-          <widget class="QWidget" name="scrollAreaWidgetContents">
-           <property name="enabled">
-            <bool>true</bool>
-           </property>
-           <property name="geometry">
-            <rect>
-             <x>0</x>
-             <y>0</y>
-             <width>253</width>
-             <height>936</height>
-            </rect>
-           </property>
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <layout class="QGridLayout" name="gridLayout">
-            <item row="0" column="0" alignment="Qt::AlignHCenter|Qt::AlignVCenter">
-             <widget class="QLabel" name="labelImagePreview">
-              <property name="text">
-               <string>abcd</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
          </widget>
         </item>
        </layout>
