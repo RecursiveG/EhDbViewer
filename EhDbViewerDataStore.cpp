@@ -1,4 +1,5 @@
 #include "EhDbViewerDataStore.h"
+#include "FuzzSearcher.h"
 #include <QDebug>
 #include <QElapsedTimer>
 #include <QFileInfo>
@@ -341,6 +342,20 @@ std::optional<QList<schema::FolderPreview>> EhDbViewerDataStore::DbSearch(QSqlDa
         }
     }
     qInfo() << "DbSearch() matching and filtering finished in " << timer.elapsed() << "ms";
+    return ret;
+}
+
+std::optional<QList<schema::FolderPreview>> EhDbViewerDataStore::DbSearchSimilar(QSqlDatabase &db, QString title) {
+    auto all_previews = DbListAllFolderPreviews(db);
+    if (!all_previews)
+        return {};
+    QList<schema::FolderPreview> ret;
+    QElapsedTimer timer;
+    timer.start();
+    FuzzSearcher searcher;
+    ret = searcher.filterMatching<schema::FolderPreview>(*all_previews, title,
+                                                         [](const schema::FolderPreview &pv) { return pv.title; });
+    qInfo() << "DbSearchSimilar() matching and filtering finished in" << timer.elapsed() << "ms";
     return ret;
 }
 

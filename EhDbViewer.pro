@@ -20,6 +20,7 @@ SOURCES += \
     DataImporter.cpp \
     EhDbViewerDataStore.cpp \
     EhentaiApi.cpp \
+    FuzzSearcher.cpp \
     MainWindow.cpp \
     SettingsDialog.cpp \
     main.cpp
@@ -29,6 +30,7 @@ HEADERS += \
     DataImporter.h \
     EhDbViewerDataStore.h \
     EhentaiApi.h \
+    FuzzSearcher.h \
     MainWindow.h \
     SearchResultItem.h \
     SettingsDialog.h

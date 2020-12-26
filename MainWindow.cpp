@@ -20,6 +20,7 @@
 #include <optional>
 
 #include "EhentaiApi.h"
+#include "FuzzSearcher.h"
 #include "SearchResultItem.h"
 #include "SettingsDialog.h"
 #include <variant>
@@ -243,6 +244,26 @@ void MainWindow::updateDetailsView() {
     updateMetadataDisplay(item);
 }
 
+void MainWindow::searchSimilar(QString base) {
+    auto db = EhDbViewerDataStore::OpenDatabase().value();
+    auto data = EhDbViewerDataStore::DbSearchSimilar(db, base);
+    if (!data) {
+        QMessageBox::warning(this, "EhDbViewer", "Failed to read database");
+        return;
+    }
+    if (data->isEmpty() || data->size() <= 1) {
+        QMessageBox::information(this, "EhDbViewer", "Didn't find other similar titles");
+        return;
+    }
+    search_result_model_->clear();
+    search_result_model_->setHorizontalHeaderLabels({"Title"});
+    ui->tableSearchResult->setColumnWidth(0, ui->tableSearchResult->width());
+    qInfo() << "Search returned " << data->size() << " results";
+    for (const schema::FolderPreview &data : *data) {
+        search_result_model_->appendRow(new SearchResultItem(data));
+    }
+}
+
 // open the folder
 void MainWindow::on_tableSearchResult_doubleClicked(const QModelIndex &index) {
     auto *item = dynamic_cast<SearchResultItem *>(search_result_model_->item(index.row()));
@@ -267,7 +288,9 @@ void MainWindow::on_tableSearchResult_customContextMenuRequested(const QPoint &p
 
         QMenu *menu = new QMenu(this);
         auto *open_dir_action = new QAction("Open in File Explorer", this);
+        auto *search_similar_action = new QAction("Search similar title", this);
         menu->addAction(open_dir_action);
+        menu->addAction(search_similar_action);
 
         if (selected_items.size() > 0) {
             connect(open_dir_action, &QAction::triggered, this, [selected_items]() {
@@ -275,8 +298,16 @@ void MainWindow::on_tableSearchResult_customContextMenuRequested(const QPoint &p
                     assert(QDesktopServices::openUrl(QUrl::fromLocalFile(item->schema().folder_path)));
                 }
             });
+
         } else {
             open_dir_action->setEnabled(false);
+        }
+
+        if (selected_items.size() == 1) {
+            const QString &title = selected_items[0]->schema().title;
+            connect(search_similar_action, &QAction::triggered, this, [this, title] { this->searchSimilar(title); });
+        } else {
+            search_similar_action->setEnabled(false);
         }
         return menu;
     };

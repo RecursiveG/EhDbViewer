@@ -107,6 +107,8 @@ class EhDbViewerDataStore {
     // TODO compatible normalization
     static std::optional<QList<schema::FolderPreview>> DbSearch(QSqlDatabase &db, QStringList include_kw,
                                                                 QStringList exclude_kw);
+    // Search all folders that are similar to `title`
+    static std::optional<QList<schema::FolderPreview>> DbSearchSimilar(QSqlDatabase &db, QString title);
 
     // querys, return {} if error
     static std::optional<schema::CoverImages> DbQueryCoverImages(QSqlDatabase &db, int64_t fid);

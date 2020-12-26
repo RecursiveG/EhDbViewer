@@ -40,6 +40,8 @@ class MainWindow : public QMainWindow {
 
   private:
     void updateDetailsView();
+    // Search items have title similar to `base`, update list if found.
+    void searchSimilar(QString base);
 
     Ui::MainWindow *ui;
     AspectRatioLabel *preview_label_;
