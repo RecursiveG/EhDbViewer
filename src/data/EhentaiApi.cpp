@@ -1,5 +1,5 @@
 #include "EhentaiApi.h"
-#include "EhDbViewerDataStore.h"
+#include "DataStore.h"
 #include <QJsonDocument>
 
 bool EhTorrentMetadata::isValid() {
@@ -50,7 +50,7 @@ bool EhGalleryMetadata::isValid() {
 QString EhGalleryMetadata::display() const {
     auto display_timestamp = [](int64_t t_s) {
         QDateTime timestamp;
-        timestamp.setTime_t(t_s);
+        timestamp.setSecsSinceEpoch(t_s);
         return timestamp.toString("yyyy-MM-dd hh:mm:ss");
     };
 

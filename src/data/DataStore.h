@@ -1,7 +1,6 @@
-#ifndef EHDBVIEWERDATASTORE_H
-#define EHDBVIEWERDATASTORE_H
+#ifndef DATASTORE_H
+#define DATASTORE_H
 
-#include <EhentaiApi.h>
 #include <QDir>
 #include <QSettings>
 #include <QStringList>
@@ -10,77 +9,10 @@
 #include <functional>
 #include <optional>
 
-namespace schema {
-// exactly the same as table img_folders
-struct ImageFolders {
-    int64_t fid; // folder id
-    QString folder_path;
-    QString title;
-    int64_t record_time;
-    QString eh_gid;
-};
+#include "DatabaseSchema.h"
+#include "EhentaiApi.h"
 
-// exactly the same as table cover_images
-struct CoverImages {
-    int64_t fid;
-    QString cover_fname;
-    QString cover_base64;
-};
-
-// exactly the same as table ehentai_metadata
-struct EhentaiMetadata {
-    // EH API, type modified
-    QString gid;
-    QString token;
-    QString title;
-    QString title_jpn;
-    EhCategory category;
-    QString thumb;
-    QString uploader;
-    qlonglong posted; // unix timestamp, second
-    qlonglong filecount;
-    qlonglong filesize;
-    qlonglong expunged; // 1 for true, 0 for false
-    double rating;
-    // Extra data
-    qlonglong meta_updated; // unix timestamp, second, when does the data for this gid is pull
-};
-
-// represent a search result, used for display and quick preview
-struct FolderPreview {
-    int64_t fid;
-    QString folder_path;
-    QString title;
-    int64_t record_time;
-    QString cover_base64;
-    QString eh_gid;
-};
-
-struct EhBackupImport {
-    // DOWNLOADS table
-    int64_t gid;
-    std::string token;
-    std::string title;
-    std::string title_jpn;
-    std::string thumb;
-    // https://github.com/seven332/EhViewer/blob/master/app/src/main/java/com/hippo/ehviewer/client/EhConfig.java#L282
-    // EhViewer uses bitfields
-    EhCategory category;
-    std::string posted; // e.g. 2008-04-06 18:13
-    std::string uploader;
-    double rating;
-    std::string simple_language;
-    int64_t state;
-    int64_t legacy;
-    int64_t time;
-    std::string label;
-    // DOWNLOAD_DIRNAME table
-    std::string dirname;
-};
-
-} // namespace schema
-
-class EhDbViewerDataStore {
+class DataStore {
   public:
     static const QString kEhDbViewerOrgName;
     static const QString kEhDbViewerAppName;
@@ -137,4 +69,4 @@ class EhDbViewerDataStore {
     static std::optional<uint64_t> SelectSingleNumber(QSqlQuery *query);
 };
 
-#endif // EHDBVIEWERDATASTORE_H
+#endif // DATASTORE_H

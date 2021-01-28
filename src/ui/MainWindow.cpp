@@ -15,15 +15,16 @@
 #include <QPixmap>
 #include <QProgressDialog>
 #include <QRegExp>
+#include <QTableWidget>
 #include <QUrl>
 #include <functional>
 #include <optional>
-
-#include "EhentaiApi.h"
-#include "FuzzSearcher.h"
-#include "SearchResultItem.h"
-#include "SettingsDialog.h"
 #include <variant>
+
+#include "FuzzSearcher.h"
+#include "SettingsDialog.h"
+#include "data/EhentaiApi.h"
+#include "widget/SearchResultItem.h"
 
 namespace {
 std::optional<QDir> selectDirectory(QWidget *parent, const QString &title) {
@@ -59,11 +60,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->setupUi(this);
     // resize splitters, it's magic!
     ui->splitter_main->setSizes({5000, 10000, 1, 10000});
-    ui->splitter_result_column->setSizes({5000, 1000});
+    ui->splitter_result_column->setSizes({5000, 1, 2000});
 
     // create database tables
-    auto db = EhDbViewerDataStore::OpenDatabase().value();
-    EhDbViewerDataStore::DbCreateTables(db);
+    auto db = DataStore::OpenDatabase().value();
+    if (!DataStore::DbCreateTables(db))
+        QMessageBox::warning(this, "EhDbViewer Error", "Failed to initialize database.");
 
     // setup search result table
     search_result_model_ = new QStandardItemModel(ui->tableSearchResult);
@@ -73,11 +75,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->tableSearchResult->setColumnWidth(0, ui->tableSearchResult->width());
 
     // setup image preview label
-    preview_label_ = new AspectRatioLabel(ui->imagePreviewLayoutWidget);
-    preview_label_->setScaledContents(true);
-    preview_label_->setMinimumSize(100, 1);
-    preview_label_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
-    ui->imagePreviewLayout->addWidget(preview_label_);
+    //    preview_label_ = new AspectRatioLabel(ui->imagePreviewLayoutWidget);
+    //    preview_label_->setScaledContents(true);
+    //    preview_label_->setMinimumSize(100, 1);
+    //    preview_label_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    //    ui->imagePreviewLayout->addWidget(preview_label_);
 
     // TODO
     network_manager_ = new QNetworkAccessManager(this);
@@ -157,17 +159,17 @@ void MainWindow::updateDetailsView() {
                 // TODO error,
                 return;
             }
-            preview_label_->setPixmap(pixmap);
+            ui->labelPreview->setPixmap(pixmap);
         } else {
-            preview_label_->setPixmap({});
-            preview_label_->setText("Loading...");
+            ui->labelPreview->setPixmap({});
+            ui->labelPreview->setText("Loading...");
             QApplication::processEvents();
             // QThread::sleep(1);
 
             auto path = item->schema().folder_path;
             auto fid = item->schema().fid;
-            auto db = EhDbViewerDataStore::OpenDatabase().value();
-            auto o_coverimages = EhDbViewerDataStore::DbQueryCoverImages(db, fid);
+            auto db = DataStore::OpenDatabase().value();
+            auto o_coverimages = DataStore::DbQueryCoverImages(db, fid);
             if (!o_coverimages) {
                 // TODO error message
                 return;
@@ -178,18 +180,18 @@ void MainWindow::updateDetailsView() {
                 // TODO error message
                 return;
             }
-            preview_label_->setPixmap(pixmap);
+            ui->labelPreview->setPixmap(pixmap);
         }
     };
 
     auto updateMetadataDisplay = [this](SearchResultItem *item) {
         auto display_timestamp = [](int64_t t_s) {
             QDateTime timestamp;
-            timestamp.setTime_t(t_s);
+            timestamp.setSecsSinceEpoch(t_s);
             return timestamp.toString("yyyy-MM-dd hh:mm:ss");
         };
 
-        auto db = EhDbViewerDataStore::OpenDatabase().value();
+        auto db = DataStore::OpenDatabase().value();
         QString display = "<table>";
         auto appendkv = [&display](QString key, QString value, QString alt = "(nodata)") {
             if (value.isEmpty()) {
@@ -204,7 +206,7 @@ void MainWindow::updateDetailsView() {
         appendkv("Ehentai GID", item->schema().eh_gid);
 
         if (!item->schema().eh_gid.isEmpty()) {
-            auto em = EhDbViewerDataStore::DbQueryEhMetaByGid(db, item->schema().eh_gid);
+            auto em = DataStore::DbQueryEhMetaByGid(db, item->schema().eh_gid);
             if (!em) {
                 appendkv("EhMetadata", "", "(database error)");
             } else {
@@ -224,7 +226,7 @@ void MainWindow::updateDetailsView() {
                 appendkv("MetaUpdated", display_timestamp(em->meta_updated));
 
                 // list tags
-                auto tags = EhDbViewerDataStore::DbQueryEhTagsByGid(db, em->gid);
+                auto tags = DataStore::DbQueryEhTagsByGid(db, em->gid);
                 if (!tags) {
                     appendkv("EhTags", "", "(database error)");
                 } else {
@@ -245,8 +247,8 @@ void MainWindow::updateDetailsView() {
 }
 
 void MainWindow::searchSimilar(QString base) {
-    auto db = EhDbViewerDataStore::OpenDatabase().value();
-    auto data = EhDbViewerDataStore::DbSearchSimilar(db, base);
+    auto db = DataStore::OpenDatabase().value();
+    auto data = DataStore::DbSearchSimilar(db, base);
     if (!data) {
         QMessageBox::warning(this, "EhDbViewer", "Failed to read database");
         return;
@@ -255,13 +257,49 @@ void MainWindow::searchSimilar(QString base) {
         QMessageBox::information(this, "EhDbViewer", "Didn't find other similar titles");
         return;
     }
-    search_result_model_->clear();
-    search_result_model_->setHorizontalHeaderLabels({"Title"});
-    ui->tableSearchResult->setColumnWidth(0, ui->tableSearchResult->width());
     qInfo() << "Search returned " << data->size() << " results";
-    for (const schema::FolderPreview &data : *data) {
-        search_result_model_->appendRow(new SearchResultItem(data));
+    displaySearchResult(*data, QString("Similar to %1").arg(base), true);
+    //    search_result_model_->clear();
+    //    search_result_model_->setHorizontalHeaderLabels({"Title"});
+    //    ui->tableSearchResult->setColumnWidth(0, ui->tableSearchResult->width());
+    //    for (const schema::FolderPreview &data : *data) {
+    //        search_result_model_->appendRow(new SearchResultItem(data));
+    //    }
+}
+
+void MainWindow::displaySearchResult(const QList<schema::FolderPreview> &results, const QString &tab_name,
+                                     bool in_new_tab) {
+    QTableView *table = nullptr;
+    int tab_index = -1;
+    if (ui->tabSearchResult->count() == 0 || in_new_tab) {
+        // create new list view
+        table = new QTableView(ui->tabSearchResult);
+        tab_index = ui->tabSearchResult->addTab(table, tab_name);
+        ui->tabSearchResult->setCurrentIndex(tab_index);
+    } else {
+        // get current list view
+        tab_index = ui->tabSearchResult->currentIndex();
+        table = qobject_cast<QTableView *>(ui->tabSearchResult->currentWidget());
+        if (table == nullptr) {
+            qDebug() << "search result tab containing non-table widget:" << ui->tabSearchResult->currentWidget();
+            return;
+        }
+        auto old_model = table->model();
+        table->setModel(nullptr);
+        old_model->deleteLater();
     }
+    QStandardItemModel *model = new QStandardItemModel(table);
+    model->setHorizontalHeaderLabels({"Title"});
+    for (const schema::FolderPreview &data : results) {
+        model->appendRow(new SearchResultItem(data));
+    }
+    table->setModel(model);
+    table->setColumnWidth(0, table->width());
+    table->verticalHeader()->setVisible(false);
+    table->setEditTriggers(QAbstractItemView::EditTrigger::NoEditTriggers);
+
+    ui->tabSearchResult->setTabToolTip(tab_index, tab_name);
+    ui->tabSearchResult->setTabText(tab_index, tab_name);
 }
 
 // open the folder
@@ -329,8 +367,8 @@ void MainWindow::on_txtSearchBar_returnPressed() {
         }
     }
 
-    auto db = EhDbViewerDataStore::OpenDatabase().value();
-    auto data = EhDbViewerDataStore::DbSearch(db, inc, exc);
+    auto db = DataStore::OpenDatabase().value();
+    auto data = DataStore::DbSearch(db, inc, exc);
     if (!data) {
         QMessageBox::warning(this, "EhDbViewer", "Failed to read database");
         return;
@@ -407,8 +445,8 @@ cancelled:
 }
 
 void MainWindow::on_btnTestListFullDb_clicked() {
-    auto db = EhDbViewerDataStore::OpenDatabase().value();
-    auto maybe_data = EhDbViewerDataStore::DbListAllFolderPreviews(db);
+    auto db = DataStore::OpenDatabase().value();
+    auto maybe_data = DataStore::DbListAllFolderPreviews(db);
     if (!maybe_data) {
         QMessageBox::warning(this, "EhDbViewer", "Failed to read database");
         return;
@@ -456,8 +494,8 @@ void MainWindow::on_btnTestEhRequest_clicked() {
         token = "";
         if (item->schema().eh_gid.isEmpty())
             return;
-        auto db = EhDbViewerDataStore::OpenDatabase().value();
-        auto em = EhDbViewerDataStore::DbQueryEhMetaByGid(db, item->schema().eh_gid);
+        auto db = DataStore::OpenDatabase().value();
+        auto em = DataStore::DbQueryEhMetaByGid(db, item->schema().eh_gid);
         if (em) {
             gid = em->gid.toLongLong();
             token = em->token;
@@ -469,15 +507,14 @@ void MainWindow::on_btnTestEhRequest_clicked() {
             QString s = std::get<0>(ret).display();
             ui->txtMetadataDisplay->setText(s);
 
-            std::optional<QString> transaction_msg =
-                EhDbViewerDataStore::DbTransaction([&ret](QSqlDatabase *db) -> bool {
-                    if (!EhDbViewerDataStore::DbInsertReqTransaction(*db, std::get<0>(ret))) {
-                        qCritical() << "failed to update eh metadata in db";
-                        return false;
-                    } else {
-                        return true;
-                    }
-                });
+            std::optional<QString> transaction_msg = DataStore::DbTransaction([&ret](QSqlDatabase *db) -> bool {
+                if (!DataStore::DbInsertReqTransaction(*db, std::get<0>(ret))) {
+                    qCritical() << "failed to update eh metadata in db";
+                    return false;
+                } else {
+                    return true;
+                }
+            });
             if (transaction_msg)
                 qCritical() << "db transaction failure:" << *transaction_msg;
         } else {

@@ -47,6 +47,11 @@
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
+       <widget class="QTabWidget" name="tabSearchResult">
+        <property name="elideMode">
+         <enum>Qt::ElideLeft</enum>
+        </property>
+       </widget>
        <widget class="QTableView" name="tableSearchResult">
         <property name="contextMenuPolicy">
          <enum>Qt::CustomContextMenu</enum>
@@ -155,6 +160,31 @@
           </property>
          </widget>
         </item>
+        <item>
+         <widget class="AspectRatioLabel" name="labelPreview">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>200</width>
+            <height>1</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>No image</string>
+          </property>
+          <property name="scaledContents">
+           <bool>true</bool>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
      </widget>
@@ -197,6 +227,13 @@
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>AspectRatioLabel</class>
+   <extends>QLabel</extends>
+   <header>widget/AspectRatioLabel.h</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>tableSearchResult</tabstop>
   <tabstop>txtSearchBar</tabstop>

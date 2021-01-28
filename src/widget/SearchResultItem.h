@@ -1,7 +1,7 @@
 #ifndef SEARCHRESULTITEM_H
 #define SEARCHRESULTITEM_H
 
-#include "EhDbViewerDataStore.h"
+#include "data/DataStore.h"
 #include <QStandardItem>
 
 class SearchResultItem : public QStandardItem {

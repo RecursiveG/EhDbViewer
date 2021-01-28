@@ -1,9 +1,10 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "AspectRatioLabel.h"
-#include "DataImporter.h"
-#include "EhDbViewerDataStore.h"
+#include "data/DataImporter.h"
+#include "data/DataStore.h"
+#include "widget/AspectRatioLabel.h"
+
 #include <QMainWindow>
 #include <QNetworkAccessManager>
 #include <QStandardItemModel>
@@ -42,9 +43,11 @@ class MainWindow : public QMainWindow {
     void updateDetailsView();
     // Search items have title similar to `base`, update list if found.
     void searchSimilar(QString base);
+    void displaySearchResult(const QList<schema::FolderPreview> &results, const QString &tab_name,
+                             bool in_new_tab = true);
 
     Ui::MainWindow *ui;
-    AspectRatioLabel *preview_label_;
+    // AspectRatioLabel *preview_label_;
     QStandardItemModel *search_result_model_;
     QStandardItemModel *search_history_model_;
     QNetworkAccessManager *network_manager_;

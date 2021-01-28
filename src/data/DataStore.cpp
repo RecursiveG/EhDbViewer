@@ -1,5 +1,5 @@
-#include "EhDbViewerDataStore.h"
-#include "FuzzSearcher.h"
+#include "DataStore.h"
+
 #include <QDebug>
 #include <QElapsedTimer>
 #include <QFileInfo>
@@ -8,17 +8,20 @@
 #include <optional>
 #include <unordered_set>
 
+#include "DatabaseSchema.h"
+#include "src/FuzzSearcher.h"
+
 using std::optional;
 
-const QString EhDbViewerDataStore::kEhDbViewerOrgName = "EhDbViewer";
-const QString EhDbViewerDataStore::kEhDbViewerAppName = "EhDbViewer";
-const QString EhDbViewerDataStore::kDefaultConnectionName = "db-conn-default";
+const QString DataStore::kEhDbViewerOrgName = "EhDbViewer";
+const QString DataStore::kEhDbViewerAppName = "EhDbViewer";
+const QString DataStore::kDefaultConnectionName = "db-conn-default";
 
-QSettings EhDbViewerDataStore::GetSettings() {
+QSettings DataStore::GetSettings() {
     return {QSettings::Format::IniFormat, QSettings::UserScope, kEhDbViewerOrgName, kEhDbViewerAppName};
 }
 
-QString EhDbViewerDataStore::GetSqlitePath() {
+QString DataStore::GetSqlitePath() {
     auto settings = GetSettings();
     if (!settings.contains("core/db_path")) {
         QDir config_dir = QFileInfo(settings.fileName()).dir();
@@ -29,7 +32,7 @@ QString EhDbViewerDataStore::GetSqlitePath() {
     return GetSettings().value("core/db_path").toString();
 }
 
-std::optional<QSqlDatabase> EhDbViewerDataStore::OpenDatabase(QString connection_name) {
+std::optional<QSqlDatabase> DataStore::OpenDatabase(QString connection_name) {
     if (QSqlDatabase::contains(connection_name)) {
         return QSqlDatabase::database(connection_name);
     } else {
@@ -52,7 +55,7 @@ std::optional<QSqlDatabase> EhDbViewerDataStore::OpenDatabase(QString connection
     }
 }
 
-std::optional<QSqlDatabase> EhDbViewerDataStore::OpenDatabase(QString db_path, QString conn_name) {
+std::optional<QSqlDatabase> DataStore::OpenDatabase(QString db_path, QString conn_name) {
     if (QSqlDatabase::contains(conn_name)) {
         QSqlDatabase::removeDatabase(conn_name);
     }
@@ -73,99 +76,103 @@ std::optional<QSqlDatabase> EhDbViewerDataStore::OpenDatabase(QString db_path, Q
     return db;
 }
 
-bool EhDbViewerDataStore::DbCreateTables(QSqlDatabase &db) {
-#define CREATE_TABLE(table_name, sql)                                                                                  \
-    do {                                                                                                               \
-        auto result = db.exec(sql);                                                                                    \
-        if (result.lastError().type() != QSqlError::NoError) {                                                         \
-            qCritical() << "failed to create table " << table_name << " " << result.lastError();                       \
-            return false;                                                                                              \
-        }                                                                                                              \
-        qInfo() << "created table " << table_name;                                                                     \
-    } while (0)
+namespace {
 
-    CREATE_TABLE("img_folders", R"_SQL_(
-                                create table if not exists img_folders( -- main table
-                                    fid integer primary key,            -- folder id, auto increment
-                                    folder_path text unique not null,   -- full path
-                                    title text not null,                -- display title
-                                    record_time integer not null,       -- time when this item is created, usually mtime, use ehentai_metadata.posted if possible
-                                    eh_gid text not null                -- empty string means no eh data, foreign key for ehentai_metadata.gid
-                                )
-                                )_SQL_");
+// returns false if table creation failed.
+template <typename Schema> bool CreateTable(QSqlDatabase &db) {
+    QSqlQuery query{db};
+    if (!query.prepare("SELECT revision FROM table_revision WHERE table_name=?")) {
+        qCritical() << query.lastError();
+        return false;
+    }
+    query.addBindValue(Schema::TableName());
+    if (!query.exec()) {
+        qCritical() << query.lastError();
+        return false;
+    }
+    if (!query.isActive()) {
+        qCritical() << query.lastError();
+        return false;
+    }
 
-    CREATE_TABLE("cover_images", R"_SQL_(
-                                create table if not exists cover_images(        -- table about front cover thumbnail
-                                    fid integer unique not null,  -- foreign key for img_folders.fid
-                                    cover_fname text not null,    -- file name of the cover, as in img_folders[fid].folder_path
-                                    cover_base64 text not null    -- thumbnail data
-                                )
-                                )_SQL_");
+    if (!query.first()) {
+        auto result = db.exec(Schema::CreationSql());
+        if (result.lastError().type() != QSqlError::NoError) {
+            qCritical() << "Failed to create table" << Schema::TableName() << result.lastError();
+            return false;
+        }
 
-    CREATE_TABLE("folder_tags", R"_SQL_(
-                                create table if not exists folder_tags(
-                                    fid integer not null,       -- foreign key for img_folders.fid
-                                    namespace text not null,
-                                    stem text not null
-                                )
-                                )_SQL_");
-
-    CREATE_TABLE("keywords_translation", R"_SQL_(
-                                create table if not exists keywords_translation(
-                                    keyword text not null,
-                                    tag text not null
-                                )
-                                )_SQL_");
-
-    CREATE_TABLE("translation_suppressed_keywords", R"_SQL_(
-                                create table if not exists translation_suppressed_keywords(
-                                    fid integer not null,
-                                    keyword text not null
-                                )
-                                )_SQL_");
-
-    CREATE_TABLE("ehentai_tag_suppression", R"_SQL_(
-                                create table if not exists ehentai_tag_suppression(
-                                    tag text not null, -- <namespace>:<stem>
-                                    eh_tag text not null -- <eh_namespace>:<value>
-                                )
-                                )_SQL_");
-
-    CREATE_TABLE("required_namespaces", R"_SQL_(
-                                create table if not exists required_namespaces(
-                                    namespace text primary key
-                                )
-                                )_SQL_");
-
-    CREATE_TABLE("ehentai_metadata", R"_SQL_(
-                                create table if not exists ehentai_metadata( -- E-Hentai metadata
-                                    gid text primary key,
-                                    token text not null,
-                                    title text not null,
-                                    title_jpn text not null, -- empty string if no jpn title
-                                    category text not null, -- category, see EhentaiApi for possible values.
-                                    thumb text not null,
-                                    uploader text not null, -- uploader name, empty if unknown
-                                    posted integer not null, -- unix timestamp second
-                                    filecount integer not null, -- negative one for unknown
-                                    filesize integer not null, -- negative one for unknown
-                                    expunged integer not null, -- 1 for ture, 0 for false
-                                    rating real not null,
-                                    meta_updated integer not null -- unix timestamp second: when was the metadata updated
-                                )
-                                )_SQL_");
-
-    CREATE_TABLE("ehentai_tags", R"_SQL_(
-                                create table if not exists ehentai_tags(
-                                    gid text not null,
-                                    tag text not null
-                                )
-                                )_SQL_");
-#undef CREATE_TABLE
-    return true;
+        QSqlQuery ins{db};
+        if (!ins.prepare("INSERT INTO table_revision(table_name, revision) VALUES(?,?)")) {
+            qCritical() << ins.lastError();
+            return false;
+        }
+        ins.addBindValue(Schema::TableName());
+        ins.addBindValue(Schema::SchemaRevision());
+        if (!ins.exec()) {
+            qCritical() << ins.lastError();
+            return false;
+        }
+        qInfo() << "Created table" << Schema::TableName();
+        return true;
+    } else {
+        QVariant v = query.value(0);
+        if (!v.canConvert(QMetaType::LongLong)) {
+            qCritical() << "Invalid table revision value:" << v;
+            return false;
+        }
+        qlonglong rev = v.toLongLong();
+        if (rev == Schema::SchemaRevision()) {
+            return true;
+        } else {
+            qCritical() << "Revision mismatch for table" << Schema::TableName();
+            return false;
+        }
+    }
 }
 
-std::optional<int64_t> EhDbViewerDataStore::DbMaxFid(QSqlDatabase &db) {
+template <> bool CreateTable<schema::TableRevision>(QSqlDatabase &db) {
+    auto result = db.exec(schema::TableRevision::CreationSql());
+    if (result.lastError().type() != QSqlError::NoError) {
+        qCritical() << "Failed to create table" << schema::TableRevision::TableName() << result.lastError();
+        return false;
+    } else {
+        qInfo() << "Created table" << schema::TableRevision::TableName();
+        return true;
+    }
+}
+
+} // namespace
+
+bool DataStore::DbCreateTables(QSqlDatabase &db) {
+#define CREATE_TABLE(sch_class)                                                                                        \
+    do {                                                                                                               \
+        if (!CreateTable<::schema::sch_class>(db)) {                                                                   \
+            db.rollback();                                                                                             \
+            return false;                                                                                              \
+        }                                                                                                              \
+    } while (0)
+
+    if (!db.transaction()) {
+        qCritical() << db.lastError();
+        return false;
+    }
+    CREATE_TABLE(TableRevision);
+    CREATE_TABLE(ImageFolders);
+    CREATE_TABLE(CoverImages);
+    CREATE_TABLE(FolderTags);
+    CREATE_TABLE(EhentaiMetadata);
+    CREATE_TABLE(EhentaiTags);
+    if (!db.commit()) {
+        qCritical() << db.lastError();
+        db.rollback();
+        return false;
+    }
+    return true;
+#undef CREATE_TABLE
+}
+
+std::optional<int64_t> DataStore::DbMaxFid(QSqlDatabase &db) {
     QSqlQuery query(db);
     if (!query.prepare("SELECT COUNT(*) FROM img_folders"))
         return {};
@@ -181,7 +188,7 @@ std::optional<int64_t> EhDbViewerDataStore::DbMaxFid(QSqlDatabase &db) {
     return count;
 }
 
-std::optional<QSet<QString>> EhDbViewerDataStore::DbListAllFolders(QSqlDatabase &db) {
+std::optional<QSet<QString>> DataStore::DbListAllFolders(QSqlDatabase &db) {
     QSet<QString> ret;
     QSqlQuery query{db};
     if (!query.exec("SELECT folder_path FROM img_folders"))
@@ -192,7 +199,7 @@ std::optional<QSet<QString>> EhDbViewerDataStore::DbListAllFolders(QSqlDatabase 
     return ret;
 }
 
-std::optional<QList<schema::FolderPreview>> EhDbViewerDataStore::DbListAllFolderPreviews(QSqlDatabase &db) {
+std::optional<QList<schema::FolderPreview>> DataStore::DbListAllFolderPreviews(QSqlDatabase &db) {
     QElapsedTimer timer;
     timer.start();
     QList<schema::FolderPreview> ret;
@@ -223,7 +230,7 @@ std::optional<QList<schema::FolderPreview>> EhDbViewerDataStore::DbListAllFolder
     return ret;
 }
 
-std::optional<QMap<int64_t, QStringList>> EhDbViewerDataStore::DbListSearchKeywords(QSqlDatabase &db) {
+std::optional<QMap<int64_t, QStringList>> DataStore::DbListSearchKeywords(QSqlDatabase &db) {
     QElapsedTimer timer;
     timer.start();
 
@@ -297,8 +304,8 @@ bool MatchesAny(const QStringList &kws, const std::vector<QRegExp> &regex) {
 }
 } // namespace
 
-std::optional<QList<schema::FolderPreview>> EhDbViewerDataStore::DbSearch(QSqlDatabase &db, QStringList include_kw,
-                                                                          QStringList exclude_kw) {
+std::optional<QList<schema::FolderPreview>> DataStore::DbSearch(QSqlDatabase &db, QStringList include_kw,
+                                                                QStringList exclude_kw) {
     std::vector<QRegExp> include_regex;
     std::vector<QRegExp> exclude_regex;
     std::unordered_set<int64_t> selected_fid;
@@ -345,7 +352,7 @@ std::optional<QList<schema::FolderPreview>> EhDbViewerDataStore::DbSearch(QSqlDa
     return ret;
 }
 
-std::optional<QList<schema::FolderPreview>> EhDbViewerDataStore::DbSearchSimilar(QSqlDatabase &db, QString title) {
+std::optional<QList<schema::FolderPreview>> DataStore::DbSearchSimilar(QSqlDatabase &db, QString title) {
     auto all_previews = DbListAllFolderPreviews(db);
     if (!all_previews)
         return {};
@@ -359,7 +366,7 @@ std::optional<QList<schema::FolderPreview>> EhDbViewerDataStore::DbSearchSimilar
     return ret;
 }
 
-optional<schema::CoverImages> EhDbViewerDataStore::DbQueryCoverImages(QSqlDatabase &db, int64_t fid) {
+optional<schema::CoverImages> DataStore::DbQueryCoverImages(QSqlDatabase &db, int64_t fid) {
     QSqlQuery query{db};
     QString sql = "SELECT fid, cover_fname, cover_base64 FROM cover_images WHERE fid=?";
     if (!query.prepare(sql)) {
@@ -414,7 +421,7 @@ std::optional<schema::EhentaiMetadata> DbQueryEhMetaInternal(QSqlQuery &query) {
 }
 } // namespace
 
-std::optional<schema::EhentaiMetadata> EhDbViewerDataStore::DbQueryEhMetaByGid(QSqlDatabase &db, QString gid) {
+std::optional<schema::EhentaiMetadata> DataStore::DbQueryEhMetaByGid(QSqlDatabase &db, QString gid) {
     QSqlQuery query{db};
     QString sql = "SELECT * FROM ehentai_metadata WHERE gid=?";
     if (!query.prepare(sql)) {
@@ -424,7 +431,7 @@ std::optional<schema::EhentaiMetadata> EhDbViewerDataStore::DbQueryEhMetaByGid(Q
     query.addBindValue(gid);
     return DbQueryEhMetaInternal(query);
 }
-std::optional<schema::EhentaiMetadata> EhDbViewerDataStore::DbQueryEhMetaByFid(QSqlDatabase &db, int64_t fid) {
+std::optional<schema::EhentaiMetadata> DataStore::DbQueryEhMetaByFid(QSqlDatabase &db, int64_t fid) {
     QSqlQuery query{db};
     QString sql = "SELECT * FROM ehentai_metadata AS em "
                   "INNER JOIN img_folders AS if "
@@ -438,7 +445,7 @@ std::optional<schema::EhentaiMetadata> EhDbViewerDataStore::DbQueryEhMetaByFid(Q
     return DbQueryEhMetaInternal(query);
 }
 
-std::optional<QStringList> EhDbViewerDataStore::DbQueryEhTagsByGid(QSqlDatabase &db, QString gid) {
+std::optional<QStringList> DataStore::DbQueryEhTagsByGid(QSqlDatabase &db, QString gid) {
     QElapsedTimer timer;
     timer.start();
     QSqlQuery query{db};
@@ -463,7 +470,7 @@ std::optional<QStringList> EhDbViewerDataStore::DbQueryEhTagsByGid(QSqlDatabase 
     return ret;
 }
 
-bool EhDbViewerDataStore::DbInsert(QSqlDatabase &db, schema::ImageFolders data) {
+bool DataStore::DbInsert(QSqlDatabase &db, schema::ImageFolders data) {
     QSqlQuery query{db};
     if (!query.prepare("INSERT INTO img_folders(fid, folder_path, title, record_time, eh_gid) VALUES(?,?,?,?,?)")) {
         qCritical() << query.lastError();
@@ -480,7 +487,7 @@ bool EhDbViewerDataStore::DbInsert(QSqlDatabase &db, schema::ImageFolders data) 
     return success;
 }
 
-bool EhDbViewerDataStore::DbInsert(QSqlDatabase &db, schema::CoverImages data) {
+bool DataStore::DbInsert(QSqlDatabase &db, schema::CoverImages data) {
     QSqlQuery query{db};
     if (!query.prepare("INSERT INTO cover_images(fid, cover_fname, cover_base64) VALUES(?,?,?)")) {
         qCritical() << query.lastError();
@@ -495,7 +502,7 @@ bool EhDbViewerDataStore::DbInsert(QSqlDatabase &db, schema::CoverImages data) {
     return success;
 }
 
-bool EhDbViewerDataStore::DbInsert(QSqlDatabase &db, schema::EhentaiMetadata data) {
+bool DataStore::DbInsert(QSqlDatabase &db, schema::EhentaiMetadata data) {
     QSqlQuery query{db};
     QString sql = "INSERT INTO ehentai_metadata("
                   "gid, token, title, title_jpn, category, thumb, uploader, posted, filecount, filesize, expunged, "
@@ -523,7 +530,7 @@ bool EhDbViewerDataStore::DbInsert(QSqlDatabase &db, schema::EhentaiMetadata dat
     return success;
 }
 
-bool EhDbViewerDataStore::DbInsertReqTransaction(QSqlDatabase &db, const EhGalleryMetadata &data) {
+bool DataStore::DbInsertReqTransaction(QSqlDatabase &db, const EhGalleryMetadata &data) {
     schema::EhentaiMetadata d{
         .gid = QString::number(data.gid),
         .token = QString::fromStdString(data.token),
@@ -558,7 +565,7 @@ bool EhDbViewerDataStore::DbInsertReqTransaction(QSqlDatabase &db, const EhGalle
     return DbReplaceEhTagsReqTransaction(db, d.gid, new_tag_list);
 }
 
-bool EhDbViewerDataStore::DbReplaceEhTagsReqTransaction(QSqlDatabase &db, QString gid, QStringList tags) {
+bool DataStore::DbReplaceEhTagsReqTransaction(QSqlDatabase &db, QString gid, QStringList tags) {
     QSqlQuery del_query{db};
     if (!del_query.prepare("DELETE FROM ehentai_tags WHERE gid=?")) {
         qCritical() << del_query.lastError();
@@ -590,8 +597,7 @@ bool EhDbViewerDataStore::DbReplaceEhTagsReqTransaction(QSqlDatabase &db, QStrin
     return true;
 }
 
-std::optional<QString> EhDbViewerDataStore::DbTransaction(std::function<bool(QSqlDatabase *)> f,
-                                                          QString connection_name) {
+std::optional<QString> DataStore::DbTransaction(std::function<bool(QSqlDatabase *)> f, QString connection_name) {
     auto db = OpenDatabase(connection_name).value();
     if (!db.transaction()) {
         return "failed to start transaction";
@@ -617,7 +623,7 @@ std::optional<QString> EhDbViewerDataStore::DbTransaction(std::function<bool(QSq
     }
 }
 
-std::optional<QList<schema::EhBackupImport>> EhDbViewerDataStore::EhBakDbImport(QSqlDatabase *ehdb) {
+std::optional<QList<schema::EhBackupImport>> DataStore::EhBakDbImport(QSqlDatabase *ehdb) {
     QList<schema::EhBackupImport> ret;
     QSqlQuery query{*ehdb};
     QString sql = "SELECT downloads.gid as gid, token, title, title_jpn, thumb, category, posted, uploader, rating,"
@@ -656,7 +662,7 @@ std::optional<QList<schema::EhBackupImport>> EhDbViewerDataStore::EhBakDbImport(
     return ret;
 }
 
-std::optional<uint64_t> EhDbViewerDataStore::SelectSingleNumber(QSqlQuery *query) {
+std::optional<uint64_t> DataStore::SelectSingleNumber(QSqlQuery *query) {
     if (!query->exec())
         return {};
     if (!query->first())

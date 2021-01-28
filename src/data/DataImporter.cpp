@@ -8,7 +8,7 @@
 #include <QLabel>
 #include <QtSql>
 
-#include "EhDbViewerDataStore.h"
+#include "DataStore.h"
 #include <map>
 
 const QString DataImporter::kNoImageBase64 =
@@ -99,7 +99,7 @@ std::optional<QString> DataImporter::ScanFolder(const QDir &dir, std::vector<Fol
 
 QString DataImporter::ImportDir(QDir dir, QWidget *parent) {
     QString ret = "";
-    auto transaction_msg = EhDbViewerDataStore::DbTransaction([dir, parent, &ret](QSqlDatabase *db) -> bool {
+    auto transaction_msg = DataStore::DbTransaction([dir, parent, &ret](QSqlDatabase *db) -> bool {
         // progress dialog
         QProgressDialog progress("", "Abort", 0, 0, parent);
         auto label = new QLabel();
@@ -122,7 +122,7 @@ QString DataImporter::ImportDir(QDir dir, QWidget *parent) {
         }
 
         // filter out folders that's already in database
-        auto db_folders = EhDbViewerDataStore::DbListAllFolders(*db);
+        auto db_folders = DataStore::DbListAllFolders(*db);
         if (!db_folders) {
             ret = "Error: DbListAllFolders() failed";
             return false;
@@ -148,7 +148,7 @@ QString DataImporter::ImportDir(QDir dir, QWidget *parent) {
         }
 
         // insert to db
-        auto count = EhDbViewerDataStore::DbMaxFid(*db);
+        auto count = DataStore::DbMaxFid(*db);
         if (!count) {
             qCritical() << "failed to query max fid from main db";
             ret = "Error: database err";
@@ -159,16 +159,16 @@ QString DataImporter::ImportDir(QDir dir, QWidget *parent) {
         for (const auto &folder : discovered_folders) {
             int64_t fid = next_fid++;
 
-            if (!EhDbViewerDataStore::DbInsert(*db, schema::ImageFolders{.fid = fid,
-                                                                         .folder_path = folder.folder.absolutePath(),
-                                                                         .title = folder.folder.dirName(),
-                                                                         //.record_time = // TODO,
-                                                                         .eh_gid = ""})) {
+            if (!DataStore::DbInsert(*db, schema::ImageFolders{.fid = fid,
+                                                               .folder_path = folder.folder.absolutePath(),
+                                                               .title = folder.folder.dirName(),
+                                                               //.record_time = // TODO,
+                                                               .eh_gid = ""})) {
                 ret = "Error: failed to insert to db";
                 return false;
             }
 
-            if (!EhDbViewerDataStore::DbInsert(
+            if (!DataStore::DbInsert(
                     *db, schema::CoverImages{
                              .fid = fid,
                              .cover_fname = folder.cover_fname,
@@ -227,13 +227,13 @@ QString DataImporter::ImportEhViewerBackup(QStringList db_files, QDir download_d
     for (QString db_file : db_files) {
         QString fault_message = "";
         {
-            std::optional<QSqlDatabase> ehdb = EhDbViewerDataStore::OpenDatabase(db_file, "ehviewer-db-import");
+            std::optional<QSqlDatabase> ehdb = DataStore::OpenDatabase(db_file, "ehviewer-db-import");
             if (!ehdb) {
                 return "failed to open eh db file";
             }
 
             // read from backup
-            auto ehdb_data = EhDbViewerDataStore::EhBakDbImport(&*ehdb);
+            auto ehdb_data = DataStore::EhBakDbImport(&*ehdb);
             if (!ehdb_data) {
                 fault_message = "Error: failed to read ehviewer database";
             } else {
@@ -249,8 +249,8 @@ QString DataImporter::ImportEhViewerBackup(QStringList db_files, QDir download_d
     }
 
     QString ret;
-    auto transaction_err = EhDbViewerDataStore::DbTransaction([parent, &ret, &ehv_entries,
-                                                               download_dir](QSqlDatabase *db) -> bool {
+    auto transaction_err = DataStore::DbTransaction([parent, &ret, &ehv_entries,
+                                                     download_dir](QSqlDatabase *db) -> bool {
         // progress dialog
         QProgressDialog progress("", "Abort", 0, 0, parent);
         auto label = new QLabel();
@@ -265,7 +265,7 @@ QString DataImporter::ImportEhViewerBackup(QStringList db_files, QDir download_d
         QApplication::processEvents();
 
         // filter out records if it's already in db
-        auto db_folders = EhDbViewerDataStore::DbListAllFolders(*db);
+        auto db_folders = DataStore::DbListAllFolders(*db);
         if (!db_folders) {
             ret = "Error: DbListAllFolders() failed";
             return false;
@@ -280,7 +280,7 @@ QString DataImporter::ImportEhViewerBackup(QStringList db_files, QDir download_d
         progress.setValue(0);
 
         // insert to db
-        auto count = EhDbViewerDataStore::DbMaxFid(*db);
+        auto count = DataStore::DbMaxFid(*db);
         if (!count) {
             qCritical() << "failed to query max fid from main db";
             ret = "Error: database err";
@@ -316,40 +316,39 @@ QString DataImporter::ImportEhViewerBackup(QStringList db_files, QDir download_d
             qlonglong this_fid = next_fid++;
 
             std::string title = eh_data.title_jpn.empty() ? eh_data.title : eh_data.title_jpn;
-            if (!EhDbViewerDataStore::DbInsert(
-                    *db, schema::ImageFolders{
-                             .fid = this_fid,
-                             .folder_path = dir.absolutePath(),
-                             .title = QString::fromStdString(title),
-                             .record_time = EhViewerTimeToStamp(QString::fromStdString(eh_data.posted)),
-                             .eh_gid = QString::number(eh_data.gid),
-                         })) {
+            if (!DataStore::DbInsert(*db,
+                                     schema::ImageFolders{
+                                         .fid = this_fid,
+                                         .folder_path = dir.absolutePath(),
+                                         .title = QString::fromStdString(title),
+                                         .record_time = EhViewerTimeToStamp(QString::fromStdString(eh_data.posted)),
+                                         .eh_gid = QString::number(eh_data.gid),
+                                     })) {
                 ret = "failed to insert to img_folders";
                 return false;
             }
 
-            if (!EhDbViewerDataStore::DbInsert(
+            if (!DataStore::DbInsert(
                     *db, schema::CoverImages{.fid = this_fid, .cover_fname = filename, .cover_base64 = thumb_base64})) {
                 ret = "failed to insert to cover_images";
                 return false;
             }
 
-            if (!EhDbViewerDataStore::DbInsert(
-                    *db, schema::EhentaiMetadata{
-                             .gid = QString::number(eh_data.gid),
-                             .token = QString::fromStdString(eh_data.token),
-                             .title = QString::fromStdString(eh_data.title),
-                             .title_jpn = QString::fromStdString(eh_data.title_jpn),
-                             .category = eh_data.category,
-                             .thumb = QString::fromStdString(eh_data.thumb),
-                             .uploader = QString::fromStdString(eh_data.uploader),
-                             .posted = EhViewerTimeToStamp(QString::fromStdString(eh_data.posted)),
-                             .filecount = 0,
-                             .filesize = 0,
-                             .expunged = -1,
-                             .rating = eh_data.rating,
-                             .meta_updated = 0,
-                         })) {
+            if (!DataStore::DbInsert(*db, schema::EhentaiMetadata{
+                                              .gid = QString::number(eh_data.gid),
+                                              .token = QString::fromStdString(eh_data.token),
+                                              .title = QString::fromStdString(eh_data.title),
+                                              .title_jpn = QString::fromStdString(eh_data.title_jpn),
+                                              .category = eh_data.category,
+                                              .thumb = QString::fromStdString(eh_data.thumb),
+                                              .uploader = QString::fromStdString(eh_data.uploader),
+                                              .posted = EhViewerTimeToStamp(QString::fromStdString(eh_data.posted)),
+                                              .filecount = 0,
+                                              .filesize = 0,
+                                              .expunged = -1,
+                                              .rating = eh_data.rating,
+                                              .meta_updated = 0,
+                                          })) {
                 ret = "failed to insert to ehentai_metadata";
                 return false;
             }
