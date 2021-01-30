@@ -59,7 +59,7 @@ class FuzzSearcher {
             s.replace(non_word_char, "");
 
             if (include_prefix_matching_) {
-                for (const QString &p : prefixes) {
+                for (const QString &p : qAsConst(prefixes)) {
                     if (s.contains(p)) {
                         matches = true;
                         break;

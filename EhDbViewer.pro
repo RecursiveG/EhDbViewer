@@ -22,7 +22,8 @@ SOURCES += \
     src/FuzzSearcher.cpp \
     src/ui/MainWindow.cpp \
     src/ui/SettingsDialog.cpp \
-    src/main.cpp
+    src/main.cpp \
+    src/widget/TabbedSearchResult.cpp
 
 HEADERS += \
     src/data/DataStore.h \
@@ -32,8 +33,8 @@ HEADERS += \
     src/data/EhentaiApi.h \
     src/FuzzSearcher.h \
     src/ui/MainWindow.h \
-    src/widget/SearchResultItem.h \
-    src/ui/SettingsDialog.h
+    src/ui/SettingsDialog.h \
+    src/widget/TabbedSearchResult.h
 
 FORMS += \
     src/ui/MainWindow.ui \

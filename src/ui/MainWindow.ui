@@ -47,21 +47,10 @@
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
-       <widget class="QTabWidget" name="tabSearchResult">
+       <widget class="TabbedSearchResult" name="tabSearchResult">
         <property name="elideMode">
          <enum>Qt::ElideLeft</enum>
         </property>
-       </widget>
-       <widget class="QTableView" name="tableSearchResult">
-        <property name="contextMenuPolicy">
-         <enum>Qt::CustomContextMenu</enum>
-        </property>
-        <property name="editTriggers">
-         <set>QAbstractItemView::NoEditTriggers</set>
-        </property>
-        <attribute name="verticalHeaderVisible">
-         <bool>false</bool>
-        </attribute>
        </widget>
        <widget class="QWidget" name="layoutWidget2">
         <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -85,23 +74,16 @@
       <widget class="QWidget" name="layoutWidget3">
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
-         <widget class="QPushButton" name="btnTestListFullDb">
+         <widget class="QPushButton" name="btnListFullDatabase">
           <property name="text">
-           <string>列出数据库</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="btnOpenSelectedFolder">
-          <property name="text">
-           <string>打开选中目录</string>
+           <string>列出所有数据库条目</string>
           </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="btnTestEhRequest">
           <property name="text">
-           <string>Eh请求</string>
+           <string>测试：Eh请求</string>
           </property>
          </widget>
         </item>
@@ -109,20 +91,6 @@
          <widget class="QPushButton" name="btnTestProgressDiag">
           <property name="text">
            <string>Test Progress Dialog</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="btnTest1">
-          <property name="text">
-           <string>Test1</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="btnTest2">
-          <property name="text">
-           <string>Test2</string>
           </property>
          </widget>
         </item>
@@ -233,12 +201,15 @@
    <extends>QLabel</extends>
    <header>widget/AspectRatioLabel.h</header>
   </customwidget>
+  <customwidget>
+   <class>TabbedSearchResult</class>
+   <extends>QTabWidget</extends>
+   <header>widget/TabbedSearchResult.h</header>
+   <container>1</container>
+  </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>tableSearchResult</tabstop>
   <tabstop>txtSearchBar</tabstop>
-  <tabstop>btnTestListFullDb</tabstop>
-  <tabstop>btnOpenSelectedFolder</tabstop>
   <tabstop>btnTestEhRequest</tabstop>
  </tabstops>
  <resources/>
