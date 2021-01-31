@@ -1,7 +1,8 @@
 // See https://stackoverflow.com/a/43936590/2515783
 #include "AspectRatioLabel.h"
 
-AspectRatioLabel::AspectRatioLabel(QWidget *parent, Qt::WindowFlags f) : QLabel(parent, f) {}
+AspectRatioLabel::AspectRatioLabel(QWidget *parent, Qt::WindowFlags f)
+    : QLabel(parent, f) {}
 
 AspectRatioLabel::~AspectRatioLabel() {}
 

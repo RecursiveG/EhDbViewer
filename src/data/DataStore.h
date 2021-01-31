@@ -21,7 +21,8 @@ class DataStore {
     static QSettings GetSettings();
     static QString GetSqlitePath();
 
-    static std::optional<QSqlDatabase> OpenDatabase(QString connection_name = kDefaultConnectionName);
+    static std::optional<QSqlDatabase>
+    OpenDatabase(QString connection_name = kDefaultConnectionName);
     // force open a sqlite db file. i.e. delete the conn if the conn name exists
     static std::optional<QSqlDatabase> OpenDatabase(QString db_path, QString conn_name);
     // create tables if they don't exists, return false if failure
@@ -30,22 +31,28 @@ class DataStore {
     // return {} if error
     static std::optional<int64_t> DbMaxFid(QSqlDatabase &db);
     static std::optional<QSet<QString>> DbListAllFolders(QSqlDatabase &db);
-    static std::optional<QList<schema::FolderPreview>> DbListAllFolderPreviews(QSqlDatabase &db);
-    static std::optional<QMap<int64_t, QStringList>> DbListSearchKeywords(QSqlDatabase &db);
+    static std::optional<QList<schema::FolderPreview>>
+    DbListAllFolderPreviews(QSqlDatabase &db);
+    static std::optional<QMap<int64_t, QStringList>>
+    DbListSearchKeywords(QSqlDatabase &db);
 
     // A result is included if it's matches all in include_kw and none in exclude_kw.
     // When include_kw is empty, then all results will be considered.
     // TODO match mode: regex vs wildcard
     // TODO compatible normalization
-    static std::optional<QList<schema::FolderPreview>> DbSearch(QSqlDatabase &db, QStringList include_kw,
-                                                                QStringList exclude_kw);
+    static std::optional<QList<schema::FolderPreview>>
+    DbSearch(QSqlDatabase &db, QStringList include_kw, QStringList exclude_kw);
     // Search all folders that are similar to `title`
-    static std::optional<QList<schema::FolderPreview>> DbSearchSimilar(QSqlDatabase &db, QString title);
+    static std::optional<QList<schema::FolderPreview>> DbSearchSimilar(QSqlDatabase &db,
+                                                                       QString title);
 
     // querys, return {} if error
-    static std::optional<schema::CoverImages> DbQueryCoverImages(QSqlDatabase &db, int64_t fid);
-    static std::optional<schema::EhentaiMetadata> DbQueryEhMetaByGid(QSqlDatabase &db, QString gid);
-    static std::optional<schema::EhentaiMetadata> DbQueryEhMetaByFid(QSqlDatabase &db, int64_t fid);
+    static std::optional<schema::CoverImages> DbQueryCoverImages(QSqlDatabase &db,
+                                                                 int64_t fid);
+    static std::optional<schema::EhentaiMetadata> DbQueryEhMetaByGid(QSqlDatabase &db,
+                                                                     QString gid);
+    static std::optional<schema::EhentaiMetadata> DbQueryEhMetaByFid(QSqlDatabase &db,
+                                                                     int64_t fid);
     static std::optional<QStringList> DbQueryEhTagsByGid(QSqlDatabase &db, QString gid);
 
     // return false if error
@@ -54,12 +61,14 @@ class DataStore {
     static bool DbInsert(QSqlDatabase &db, schema::EhentaiMetadata data);
     // require the caller to warp db in a transaction.
     static bool DbInsertReqTransaction(QSqlDatabase &db, const EhGalleryMetadata &data);
-    static bool DbReplaceEhTagsReqTransaction(QSqlDatabase &db, QString gid, QStringList tags);
+    static bool DbReplaceEhTagsReqTransaction(QSqlDatabase &db, QString gid,
+                                              QStringList tags);
 
     // the inner function should return true if need submission, or false for rollback
     // the function returns a string if anything is wrong with the transaction.
-    static std::optional<QString> DbTransaction(std::function<bool(QSqlDatabase *db)> f,
-                                                QString connection_name = kDefaultConnectionName);
+    static std::optional<QString>
+    DbTransaction(std::function<bool(QSqlDatabase *db)> f,
+                  QString connection_name = kDefaultConnectionName);
 
     static std::optional<QList<schema::EhBackupImport>> EhBakDbImport(QSqlDatabase *ehdb);
 

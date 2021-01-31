@@ -69,16 +69,20 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     if (!DataStore::DbCreateTables(db))
         QMessageBox::warning(this, "EhDbViewer Error", "Failed to initialize database.");
 
-    connect(ui->txtSearchBar, &QLineEdit::returnPressed, this, &MainWindow::onSearchBarEnterPressed);
-    connect(ui->tabSearchResult, &TabbedSearchResult::tabChanged, this, &MainWindow::onSearchResultTabChanged);
+    connect(ui->txtSearchBar, &QLineEdit::returnPressed, this,
+            &MainWindow::onSearchBarEnterPressed);
+    connect(ui->tabSearchResult, &TabbedSearchResult::tabChanged, this,
+            &MainWindow::onSearchResultTabChanged);
     connect(ui->tabSearchResult, &TabbedSearchResult::selectionChanged, this,
             &MainWindow::onSearchResultSelectionChanged);
 
-    connect(ui->btnListFullDatabase, &QPushButton::clicked, [this] { newSearch("all:"); });
-    connect(ui->tabSearchResult, &TabbedSearchResult::queryRequested, [this](QString query) {
-        if (!query.isEmpty())
-            newSearch(query);
-    });
+    connect(ui->btnListFullDatabase, &QPushButton::clicked,
+            [this] { newSearch("all:"); });
+    connect(ui->tabSearchResult, &TabbedSearchResult::queryRequested,
+            [this](QString query) {
+                if (!query.isEmpty())
+                    newSearch(query);
+            });
 }
 
 MainWindow::~MainWindow() { delete ui; }
@@ -106,7 +110,8 @@ void MainWindow::newSearch(QString query) {
         // If not include pattern specified, an implicit ".*" is assumed.
 
         const auto tmp =
-            query.split(" ", Qt::SkipEmptyParts); // You have to write it this way to make clazy happy. Stupid.
+            query.split(" ", Qt::SkipEmptyParts); // You have to write it this way to make
+                                                  // clazy happy. Stupid.
         for (const QString &s : tmp) {
             if (s.startsWith("-")) {
                 if (s.size() > 1)
@@ -144,7 +149,8 @@ void MainWindow::onSearchResultTabChanged(QString new_tab_query) {
 }
 
 // update image label & metadata textbox according to "new_selections"
-void MainWindow::onSearchResultSelectionChanged(QList<schema::FolderPreview> new_selections) {
+void MainWindow::onSearchResultSelectionChanged(
+    QList<schema::FolderPreview> new_selections) {
 
     auto displayImageLabel = [this](const schema::FolderPreview *item) {
         bool use_thumbnail = ui->cbUseThumbnail->checkState() == Qt::CheckState::Checked;
@@ -191,9 +197,13 @@ void MainWindow::onSearchResultSelectionChanged(QList<schema::FolderPreview> new
         QString display = "<table>";
         auto appendkv = [&display](QString key, QString value, QString alt = "(nodata)") {
             if (value.isEmpty()) {
-                display += QString("<tr><td><b>%1:</b></td><td><i>%2</i></td></tr>").arg(key).arg(alt);
+                display += QString("<tr><td><b>%1:</b></td><td><i>%2</i></td></tr>")
+                               .arg(key)
+                               .arg(alt);
             } else {
-                display += QString("<tr><td><b>%1:</b></td><td>%2</td></tr>").arg(key).arg(value);
+                display += QString("<tr><td><b>%1:</b></td><td>%2</td></tr>")
+                               .arg(key)
+                               .arg(value);
             }
         };
 
@@ -211,7 +221,8 @@ void MainWindow::onSearchResultSelectionChanged(QList<schema::FolderPreview> new
                 appendkv("EhTitle", em->title);
                 appendkv("EhTitleJpn", em->title_jpn);
                 appendkv("EhCategory#", QString::number(em->category));
-                appendkv("EhCategory", QString::fromStdString(EhentaiApi::CategoryToString(em->category)));
+                appendkv("EhCategory", QString::fromStdString(
+                                           EhentaiApi::CategoryToString(em->category)));
                 appendkv("EhThumb", em->thumb);
                 appendkv("EhUploader", em->uploader);
                 appendkv("EhPostedDate", display_timestamp(em->posted));
@@ -259,12 +270,19 @@ void MainWindow::on_actionImportFolder_triggered() {
 }
 
 void MainWindow::on_actionImportEhViewerBackup_triggered() {
-    QStringList db_filepaths = QFileDialog::getOpenFileNames(this, "Select EhViewer DB files", "Database file (*.db)");
+    auto settings = DataStore::GetSettings();
+    QString db_file_folder = settings.value("history/eh_db_import_folder", "").toString();
+    QStringList db_filepaths = QFileDialog::getOpenFileNames(
+        this, "Select EhViewer DB files", db_file_folder, "Database file (*.db)");
     if (db_filepaths.isEmpty()) {
         ui->statusbar->showMessage("Backup file selection cancelled.", 5000);
         return;
     }
-    QString download_dir = QFileDialog::getExistingDirectory(this, "Select EhViewer download folder");
+    db_file_folder = QFileInfo(db_filepaths.at(0)).dir().absolutePath();
+    settings.setValue("history/eh_db_import_folder", db_file_folder);
+
+    QString download_dir = QFileDialog::getExistingDirectory(
+        this, "Select EhViewer download folder", db_file_folder);
     if (download_dir.isEmpty()) {
         ui->statusbar->showMessage("Folder selection cancelled.", 5000);
         return;
@@ -334,8 +352,8 @@ void MainWindow::on_btnTestEhRequest_clicked() {
     //            return nullptr;
     //        }
     //        int row = sel->selectedRows()[0].row();
-    //        auto *item = dynamic_cast<SearchResultItem *>(search_result_model_->item(row));
-    //        if (!item) {
+    //        auto *item = dynamic_cast<SearchResultItem
+    //        *>(search_result_model_->item(row)); if (!item) {
     //            QMessageBox::warning(this, "", "internal error");
     //            return nullptr;
     //        }
@@ -357,12 +375,14 @@ void MainWindow::on_btnTestEhRequest_clicked() {
     //        }
     //    };
 
-    //    auto onRequestFinish = [this](std::variant<EhGalleryMetadata, QNetworkReply *> ret) {
+    //    auto onRequestFinish = [this](std::variant<EhGalleryMetadata, QNetworkReply *>
+    //    ret) {
     //        if (ret.index() == 0) {
     //            QString s = std::get<0>(ret).display();
     //            ui->txtMetadataDisplay->setText(s);
 
-    //            std::optional<QString> transaction_msg = DataStore::DbTransaction([&ret](QSqlDatabase *db) -> bool {
+    //            std::optional<QString> transaction_msg =
+    //            DataStore::DbTransaction([&ret](QSqlDatabase *db) -> bool {
     //                if (!DataStore::DbInsertReqTransaction(*db, std::get<0>(ret))) {
     //                    qCritical() << "failed to update eh metadata in db";
     //                    return false;

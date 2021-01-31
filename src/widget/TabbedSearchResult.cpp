@@ -11,9 +11,11 @@ namespace {
 // Wrap FolderPreview into an ListView item.
 class SearchResultItem : public QStandardItem {
   public:
-    explicit SearchResultItem(schema::FolderPreview data) : QStandardItem(), schema_(data) {
+    explicit SearchResultItem(schema::FolderPreview data)
+        : QStandardItem(), schema_(data) {
         setText(schema_.title);
-        QString html = QString("<img src=\"data:image/jpeg;base64,%0\">").arg(schema_.cover_base64);
+        QString html =
+            QString("<img src=\"data:image/jpeg;base64,%0\">").arg(schema_.cover_base64);
         setToolTip(html);
     }
 
@@ -28,7 +30,8 @@ TabbedSearchResult::TabbedSearchResult(QWidget *parent) : QTabWidget(parent) {
     this->setTabsClosable(true);
     this->setElideMode(Qt::ElideLeft);
     connect(this, &QTabWidget::currentChanged, this, &TabbedSearchResult::onTabChanged);
-    connect(this, &QTabWidget::tabCloseRequested, this, &TabbedSearchResult::onTabCloseRequested);
+    connect(this, &QTabWidget::tabCloseRequested, this,
+            &TabbedSearchResult::onTabCloseRequested);
 }
 
 QString TabbedSearchResult::getSelectedTabQueryString() {
@@ -44,17 +47,21 @@ QList<schema::FolderPreview> TabbedSearchResult::getSelection() {
 
     QTableView *table = qobject_cast<QTableView *>(this->currentWidget());
     if (table == nullptr) {
-        qCritical() << "Invalid table view in TabbedSearchResult:" << this->currentWidget();
-        QMessageBox::warning(this, "Bug Alert",
-                             "A bug is detected, please report the console error log to the developer.");
+        qCritical() << "Invalid table view in TabbedSearchResult:"
+                    << this->currentWidget();
+        QMessageBox::warning(
+            this, "Bug Alert",
+            "A bug is detected, please report the console error log to the developer.");
         return {};
     }
 
     auto *model = qobject_cast<QStandardItemModel *>(table->model());
     if (model == nullptr) {
-        qCritical() << "Invalid table model in TabbedSearchResult::getSelection:" << table->model();
-        QMessageBox::warning(this, "Bug Alert",
-                             "A bug is detected, please report the console error log to the developer.");
+        qCritical() << "Invalid table model in TabbedSearchResult::getSelection:"
+                    << table->model();
+        QMessageBox::warning(
+            this, "Bug Alert",
+            "A bug is detected, please report the console error log to the developer.");
         return {};
     }
 
@@ -68,9 +75,11 @@ QList<schema::FolderPreview> TabbedSearchResult::getSelection() {
         int row = model_index.row();
         auto *item = dynamic_cast<SearchResultItem *>(model->item(row));
         if (item == nullptr) {
-            qCritical() << "Invalid item in TabbedSearchResult::getSelection:" << model->item(row);
+            qCritical() << "Invalid item in TabbedSearchResult::getSelection:"
+                        << model->item(row);
             QMessageBox::warning(this, "Bug Alert",
-                                 "A bug is detected, please report the console error log to the developer.");
+                                 "A bug is detected, please report the console error log "
+                                 "to the developer.");
             return {};
         }
         ret << item->schema();
@@ -78,7 +87,8 @@ QList<schema::FolderPreview> TabbedSearchResult::getSelection() {
     return ret;
 }
 
-void TabbedSearchResult::displaySearchResult(QString query_string, QList<schema::FolderPreview> results,
+void TabbedSearchResult::displaySearchResult(QString query_string,
+                                             QList<schema::FolderPreview> results,
                                              bool in_new_tab) {
     auto set_table_model = [&](QTableView *table) {
         QStandardItemModel *model = new QStandardItemModel(table);
@@ -94,8 +104,10 @@ void TabbedSearchResult::displaySearchResult(QString query_string, QList<schema:
         QTableView *table = new QTableView(this);
         set_table_model(table);
 
-        connect(table, &QTableView::doubleClicked, this, &TabbedSearchResult::onTableDoubleClicked);
-        connect(table, &QTableView::customContextMenuRequested, this, &TabbedSearchResult::onTableContextMenuRequested);
+        connect(table, &QTableView::doubleClicked, this,
+                &TabbedSearchResult::onTableDoubleClicked);
+        connect(table, &QTableView::customContextMenuRequested, this,
+                &TabbedSearchResult::onTableContextMenuRequested);
         connect(table->selectionModel(), &QItemSelectionModel::selectionChanged, this,
                 &TabbedSearchResult::onTableSelectionChanged);
 
@@ -113,9 +125,11 @@ void TabbedSearchResult::displaySearchResult(QString query_string, QList<schema:
         int idx = this->currentIndex();
         QTableView *table = qobject_cast<QTableView *>(this->currentWidget());
         if (table == nullptr) {
-            qCritical() << "Invalid table view in TabbedSearchResult:" << this->currentWidget();
+            qCritical() << "Invalid table view in TabbedSearchResult:"
+                        << this->currentWidget();
             QMessageBox::warning(this, "Bug Alert",
-                                 "A bug is detected, please report the console error log to the developer.");
+                                 "A bug is detected, please report the console error log "
+                                 "to the developer.");
             return;
         }
         auto old_model = table->model();
@@ -136,7 +150,8 @@ void TabbedSearchResult::displaySearchResult(QString query_string, QList<schema:
     }
 }
 
-void TabbedSearchResult::onTableSelectionChanged(const QItemSelection &, const QItemSelection &) {
+void TabbedSearchResult::onTableSelectionChanged(const QItemSelection &,
+                                                 const QItemSelection &) {
     auto selected_items = this->getSelection();
     emit selectionChanged(selected_items);
 }
@@ -155,17 +170,21 @@ void TabbedSearchResult::onTableContextMenuRequested(const QPoint &pos) {
             if (selected_items.size() > 100) {
                 connect(open_dir_action, &QAction::triggered, this, [this]() {
                     QMessageBox::warning(this, "Not allowed",
-                                         "For your property safety, you cannot open more than 100 folders at a time.");
+                                         "For your property safety, you cannot open more "
+                                         "than 100 folders at a time.");
                 });
             } else {
-                connect(open_dir_action, &QAction::triggered, this, [this, selected_items]() {
-                    for (const auto &item : selected_items) {
-                        if (!QDesktopServices::openUrl(QUrl::fromLocalFile(item.folder_path))) {
-                            QMessageBox::warning(this, "Error", "Failed to open " + item.folder_path);
-                            break;
+                connect(
+                    open_dir_action, &QAction::triggered, this, [this, selected_items]() {
+                        for (const auto &item : selected_items) {
+                            if (!QDesktopServices::openUrl(
+                                    QUrl::fromLocalFile(item.folder_path))) {
+                                QMessageBox::warning(
+                                    this, "Error", "Failed to open " + item.folder_path);
+                                break;
+                            }
                         }
-                    }
-                });
+                    });
             }
         } else {
             open_dir_action->setEnabled(false);
@@ -183,10 +202,12 @@ void TabbedSearchResult::onTableContextMenuRequested(const QPoint &pos) {
 
     QTableView *table = qobject_cast<QTableView *>(this->currentWidget());
     if (table == nullptr) {
-        qCritical() << "Invalid table view in TabbedSearchResult::onTableContextMenuRequested:"
-                    << this->currentWidget();
-        QMessageBox::warning(this, "Bug Alert",
-                             "A bug is detected, please report the console error log to the developer.");
+        qCritical()
+            << "Invalid table view in TabbedSearchResult::onTableContextMenuRequested:"
+            << this->currentWidget();
+        QMessageBox::warning(
+            this, "Bug Alert",
+            "A bug is detected, please report the console error log to the developer.");
         return;
     }
     buildContextMenu()->popup(table->viewport()->mapToGlobal(pos));
@@ -198,11 +219,13 @@ void TabbedSearchResult::onTableDoubleClicked(const QModelIndex &) {
     if (selected_items.size() > 0) {
         if (selected_items.size() > 100) {
             QMessageBox::warning(this, "Not allowed",
-                                 "For your property safety, you cannot open more than 100 folders at a time.");
+                                 "For your property safety, you cannot open more than "
+                                 "100 folders at a time.");
         } else {
             for (const auto &item : selected_items) {
                 if (!QDesktopServices::openUrl(QUrl::fromLocalFile(item.folder_path))) {
-                    QMessageBox::warning(this, "Error", "Failed to open " + item.folder_path);
+                    QMessageBox::warning(this, "Error",
+                                         "Failed to open " + item.folder_path);
                     break;
                 }
             }

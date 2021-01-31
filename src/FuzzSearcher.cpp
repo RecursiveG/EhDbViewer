@@ -40,7 +40,9 @@ QString FuzzSearcher::Lcs(const QString &a, const QString &b) {
     return QStringRef{&a, end_loc - len + 1, len}.toString();
 }
 
-QString FuzzSearcher::Nfkc(const QString &s) { return s.normalized(QString::NormalizationForm_KC); }
+QString FuzzSearcher::Nfkc(const QString &s) {
+    return s.normalized(QString::NormalizationForm_KC);
+}
 
 int FuzzSearcher::IndexOfAny(const QString &s, const QSet<QChar> &chars) {
     if (s.isEmpty())
@@ -76,7 +78,8 @@ bool FuzzSearcher::isBracketBalance(const QString &s) {
     return expected_endings.isEmpty();
 }
 
-bool FuzzSearcher::pickNextComponent(QString *component_out, bool *in_bracket, QString *s) {
+bool FuzzSearcher::pickNextComponent(QString *component_out, bool *in_bracket,
+                                     QString *s) {
     if (s->isEmpty())
         return false;
     if (!mapping_.contains(s->at(0))) {

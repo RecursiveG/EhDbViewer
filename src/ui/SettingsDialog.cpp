@@ -2,7 +2,8 @@
 #include "data/DataStore.h"
 #include "ui_SettingsDialog.h"
 
-SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent), ui(new Ui::SettingsDialog) {
+SettingsDialog::SettingsDialog(QWidget *parent)
+    : QDialog(parent), ui(new Ui::SettingsDialog) {
     ui->setupUi(this);
     auto settings = DataStore::GetSettings();
     QString mid = settings.value("ehentai/ipb_member_id", "").toString();

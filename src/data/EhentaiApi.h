@@ -71,8 +71,10 @@ class EhentaiApi {
     // Input value is EhViewer's bitfield representation.
     static std::optional<EhCategory> CategoryFromEhViewerValue(int val);
 
-    template <typename ReturnT> using Callback = std::function<void(std::variant<ReturnT, QNetworkReply *>)>;
-    static void GalleryMetadata(QNetworkAccessManager *nm, int64_t gid, QString token, Callback<EhGalleryMetadata> cb);
+    template <typename ReturnT>
+    using Callback = std::function<void(std::variant<ReturnT, QNetworkReply *>)>;
+    static void GalleryMetadata(QNetworkAccessManager *nm, int64_t gid, QString token,
+                                Callback<EhGalleryMetadata> cb);
 };
 
 #endif // EHENTAIAPI_H

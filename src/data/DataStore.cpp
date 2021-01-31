@@ -18,7 +18,8 @@ const QString DataStore::kEhDbViewerAppName = "EhDbViewer";
 const QString DataStore::kDefaultConnectionName = "db-conn-default";
 
 QSettings DataStore::GetSettings() {
-    return {QSettings::Format::IniFormat, QSettings::UserScope, kEhDbViewerOrgName, kEhDbViewerAppName};
+    return {QSettings::Format::IniFormat, QSettings::UserScope, kEhDbViewerOrgName,
+            kEhDbViewerAppName};
 }
 
 QString DataStore::GetSqlitePath() {
@@ -98,12 +99,14 @@ template <typename Schema> bool CreateTable(QSqlDatabase &db) {
     if (!query.first()) {
         auto result = db.exec(Schema::CreationSql());
         if (result.lastError().type() != QSqlError::NoError) {
-            qCritical() << "Failed to create table" << Schema::TableName() << result.lastError();
+            qCritical() << "Failed to create table" << Schema::TableName()
+                        << result.lastError();
             return false;
         }
 
         QSqlQuery ins{db};
-        if (!ins.prepare("INSERT INTO table_revision(table_name, revision) VALUES(?,?)")) {
+        if (!ins.prepare(
+                "INSERT INTO table_revision(table_name, revision) VALUES(?,?)")) {
             qCritical() << ins.lastError();
             return false;
         }
@@ -134,7 +137,8 @@ template <typename Schema> bool CreateTable(QSqlDatabase &db) {
 template <> bool CreateTable<schema::TableRevision>(QSqlDatabase &db) {
     auto result = db.exec(schema::TableRevision::CreationSql());
     if (result.lastError().type() != QSqlError::NoError) {
-        qCritical() << "Failed to create table" << schema::TableRevision::TableName() << result.lastError();
+        qCritical() << "Failed to create table" << schema::TableRevision::TableName()
+                    << result.lastError();
         return false;
     } else {
         qInfo() << "Created table" << schema::TableRevision::TableName();
@@ -145,12 +149,12 @@ template <> bool CreateTable<schema::TableRevision>(QSqlDatabase &db) {
 } // namespace
 
 bool DataStore::DbCreateTables(QSqlDatabase &db) {
-#define CREATE_TABLE(sch_class)                                                                                        \
-    do {                                                                                                               \
-        if (!CreateTable<::schema::sch_class>(db)) {                                                                   \
-            db.rollback();                                                                                             \
-            return false;                                                                                              \
-        }                                                                                                              \
+#define CREATE_TABLE(sch_class)                                                          \
+    do {                                                                                 \
+        if (!CreateTable<::schema::sch_class>(db)) {                                     \
+            db.rollback();                                                               \
+            return false;                                                                \
+        }                                                                                \
     } while (0)
 
     if (!db.transaction()) {
@@ -199,12 +203,14 @@ std::optional<QSet<QString>> DataStore::DbListAllFolders(QSqlDatabase &db) {
     return ret;
 }
 
-std::optional<QList<schema::FolderPreview>> DataStore::DbListAllFolderPreviews(QSqlDatabase &db) {
+std::optional<QList<schema::FolderPreview>>
+DataStore::DbListAllFolderPreviews(QSqlDatabase &db) {
     QElapsedTimer timer;
     timer.start();
     QList<schema::FolderPreview> ret;
     QSqlQuery query{db};
-    if (!query.exec("SELECT img_folders.fid as fid, folder_path, title, record_time, cover_base64, eh_gid "
+    if (!query.exec("SELECT img_folders.fid as fid, folder_path, title, record_time, "
+                    "cover_base64, eh_gid "
                     "FROM img_folders LEFT JOIN cover_images "
                     "ON img_folders.fid == cover_images.fid")) {
         qCritical() << "select join failed" << query.lastError();
@@ -220,7 +226,8 @@ std::optional<QList<schema::FolderPreview>> DataStore::DbListAllFolderPreviews(Q
             .cover_base64 = query.value("cover_base64").toString(),
             .eh_gid = query.value("eh_gid").toString(),
         };
-        if (data.folder_path.isEmpty() || data.title.isEmpty() || data.cover_base64.isEmpty()) {
+        if (data.folder_path.isEmpty() || data.title.isEmpty() ||
+            data.cover_base64.isEmpty()) {
             qCritical() << "failed to parse data row for fid " << data.fid;
             continue;
         }
@@ -230,7 +237,8 @@ std::optional<QList<schema::FolderPreview>> DataStore::DbListAllFolderPreviews(Q
     return ret;
 }
 
-std::optional<QMap<int64_t, QStringList>> DataStore::DbListSearchKeywords(QSqlDatabase &db) {
+std::optional<QMap<int64_t, QStringList>>
+DataStore::DbListSearchKeywords(QSqlDatabase &db) {
     QElapsedTimer timer;
     timer.start();
 
@@ -304,8 +312,8 @@ bool MatchesAny(const QStringList &kws, const std::vector<QRegExp> &regex) {
 }
 } // namespace
 
-std::optional<QList<schema::FolderPreview>> DataStore::DbSearch(QSqlDatabase &db, QStringList include_kw,
-                                                                QStringList exclude_kw) {
+std::optional<QList<schema::FolderPreview>>
+DataStore::DbSearch(QSqlDatabase &db, QStringList include_kw, QStringList exclude_kw) {
     std::vector<QRegExp> include_regex;
     std::vector<QRegExp> exclude_regex;
     std::unordered_set<int64_t> selected_fid;
@@ -337,7 +345,8 @@ std::optional<QList<schema::FolderPreview>> DataStore::DbSearch(QSqlDatabase &db
 
     QElapsedTimer timer;
     timer.start();
-    for (auto it = keywords->constKeyValueBegin(); it != keywords->constKeyValueEnd(); it++) {
+    for (auto it = keywords->constKeyValueBegin(); it != keywords->constKeyValueEnd();
+         it++) {
         const auto &fid = it->first;
         const auto &kws = it->second;
         if (MatchesAll(kws, include_regex) && !MatchesAny(kws, exclude_regex))
@@ -348,11 +357,13 @@ std::optional<QList<schema::FolderPreview>> DataStore::DbSearch(QSqlDatabase &db
             ret << r;
         }
     }
-    qInfo() << "DbSearch() matching and filtering finished in " << timer.elapsed() << "ms";
+    qInfo() << "DbSearch() matching and filtering finished in " << timer.elapsed()
+            << "ms";
     return ret;
 }
 
-std::optional<QList<schema::FolderPreview>> DataStore::DbSearchSimilar(QSqlDatabase &db, QString title) {
+std::optional<QList<schema::FolderPreview>> DataStore::DbSearchSimilar(QSqlDatabase &db,
+                                                                       QString title) {
     auto all_previews = DbListAllFolderPreviews(db);
     if (!all_previews)
         return {};
@@ -360,13 +371,15 @@ std::optional<QList<schema::FolderPreview>> DataStore::DbSearchSimilar(QSqlDatab
     QElapsedTimer timer;
     timer.start();
     FuzzSearcher searcher;
-    ret = searcher.filterMatching<schema::FolderPreview>(*all_previews, title,
-                                                         [](const schema::FolderPreview &pv) { return pv.title; });
-    qInfo() << "DbSearchSimilar() matching and filtering finished in" << timer.elapsed() << "ms";
+    ret = searcher.filterMatching<schema::FolderPreview>(
+        *all_previews, title, [](const schema::FolderPreview &pv) { return pv.title; });
+    qInfo() << "DbSearchSimilar() matching and filtering finished in" << timer.elapsed()
+            << "ms";
     return ret;
 }
 
-optional<schema::CoverImages> DataStore::DbQueryCoverImages(QSqlDatabase &db, int64_t fid) {
+optional<schema::CoverImages> DataStore::DbQueryCoverImages(QSqlDatabase &db,
+                                                            int64_t fid) {
     QSqlQuery query{db};
     QString sql = "SELECT fid, cover_fname, cover_base64 FROM cover_images WHERE fid=?";
     if (!query.prepare(sql)) {
@@ -403,7 +416,8 @@ std::optional<schema::EhentaiMetadata> DbQueryEhMetaInternal(QSqlQuery &query) {
             .token = query.value("token").toString(),
             .title = query.value("title").toString(),
             .title_jpn = query.value("title_jpn").toString(),
-            .category = EhentaiApi::CategoryFromString(query.value("category").toString().toStdString())
+            .category = EhentaiApi::CategoryFromString(
+                            query.value("category").toString().toStdString())
                             .value_or(EhCategory::UNKNOWN),
             .thumb = query.value("thumb").toString(),
             .uploader = query.value("uploader").toString(),
@@ -421,7 +435,8 @@ std::optional<schema::EhentaiMetadata> DbQueryEhMetaInternal(QSqlQuery &query) {
 }
 } // namespace
 
-std::optional<schema::EhentaiMetadata> DataStore::DbQueryEhMetaByGid(QSqlDatabase &db, QString gid) {
+std::optional<schema::EhentaiMetadata> DataStore::DbQueryEhMetaByGid(QSqlDatabase &db,
+                                                                     QString gid) {
     QSqlQuery query{db};
     QString sql = "SELECT * FROM ehentai_metadata WHERE gid=?";
     if (!query.prepare(sql)) {
@@ -431,7 +446,8 @@ std::optional<schema::EhentaiMetadata> DataStore::DbQueryEhMetaByGid(QSqlDatabas
     query.addBindValue(gid);
     return DbQueryEhMetaInternal(query);
 }
-std::optional<schema::EhentaiMetadata> DataStore::DbQueryEhMetaByFid(QSqlDatabase &db, int64_t fid) {
+std::optional<schema::EhentaiMetadata> DataStore::DbQueryEhMetaByFid(QSqlDatabase &db,
+                                                                     int64_t fid) {
     QSqlQuery query{db};
     QString sql = "SELECT * FROM ehentai_metadata AS em "
                   "INNER JOIN img_folders AS if "
@@ -472,7 +488,8 @@ std::optional<QStringList> DataStore::DbQueryEhTagsByGid(QSqlDatabase &db, QStri
 
 bool DataStore::DbInsert(QSqlDatabase &db, schema::ImageFolders data) {
     QSqlQuery query{db};
-    if (!query.prepare("INSERT INTO img_folders(fid, folder_path, title, record_time, eh_gid) VALUES(?,?,?,?,?)")) {
+    if (!query.prepare("INSERT INTO img_folders(fid, folder_path, title, record_time, "
+                       "eh_gid) VALUES(?,?,?,?,?)")) {
         qCritical() << query.lastError();
         return false;
     }
@@ -489,7 +506,8 @@ bool DataStore::DbInsert(QSqlDatabase &db, schema::ImageFolders data) {
 
 bool DataStore::DbInsert(QSqlDatabase &db, schema::CoverImages data) {
     QSqlQuery query{db};
-    if (!query.prepare("INSERT INTO cover_images(fid, cover_fname, cover_base64) VALUES(?,?,?)")) {
+    if (!query.prepare(
+            "INSERT INTO cover_images(fid, cover_fname, cover_base64) VALUES(?,?,?)")) {
         qCritical() << query.lastError();
         return false;
     }
@@ -505,7 +523,8 @@ bool DataStore::DbInsert(QSqlDatabase &db, schema::CoverImages data) {
 bool DataStore::DbInsert(QSqlDatabase &db, schema::EhentaiMetadata data) {
     QSqlQuery query{db};
     QString sql = "INSERT INTO ehentai_metadata("
-                  "gid, token, title, title_jpn, category, thumb, uploader, posted, filecount, filesize, expunged, "
+                  "gid, token, title, title_jpn, category, thumb, uploader, posted, "
+                  "filecount, filesize, expunged, "
                   "rating, meta_updated) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)";
     if (!query.prepare(sql)) {
         qCritical() << query.lastError();
@@ -515,7 +534,8 @@ bool DataStore::DbInsert(QSqlDatabase &db, schema::EhentaiMetadata data) {
     query.addBindValue(data.token);
     query.addBindValue(data.title);
     query.addBindValue(data.title_jpn);
-    query.addBindValue(QString::fromStdString(EhentaiApi::CategoryToString(data.category)));
+    query.addBindValue(
+        QString::fromStdString(EhentaiApi::CategoryToString(data.category)));
     query.addBindValue(data.thumb);
     query.addBindValue(data.uploader);
     query.addBindValue(data.posted);
@@ -565,7 +585,8 @@ bool DataStore::DbInsertReqTransaction(QSqlDatabase &db, const EhGalleryMetadata
     return DbReplaceEhTagsReqTransaction(db, d.gid, new_tag_list);
 }
 
-bool DataStore::DbReplaceEhTagsReqTransaction(QSqlDatabase &db, QString gid, QStringList tags) {
+bool DataStore::DbReplaceEhTagsReqTransaction(QSqlDatabase &db, QString gid,
+                                              QStringList tags) {
     QSqlQuery del_query{db};
     if (!del_query.prepare("DELETE FROM ehentai_tags WHERE gid=?")) {
         qCritical() << del_query.lastError();
@@ -590,14 +611,16 @@ bool DataStore::DbReplaceEhTagsReqTransaction(QSqlDatabase &db, QString gid, QSt
             return false;
         }
         if (insert_query.numRowsAffected() != 1) {
-            qCritical() << "inserted but only affect" << insert_query.numRowsAffected() << "rows";
+            qCritical() << "inserted but only affect" << insert_query.numRowsAffected()
+                        << "rows";
             return false;
         }
     }
     return true;
 }
 
-std::optional<QString> DataStore::DbTransaction(std::function<bool(QSqlDatabase *)> f, QString connection_name) {
+std::optional<QString> DataStore::DbTransaction(std::function<bool(QSqlDatabase *)> f,
+                                                QString connection_name) {
     auto db = OpenDatabase(connection_name).value();
     if (!db.transaction()) {
         return "failed to start transaction";
@@ -623,10 +646,12 @@ std::optional<QString> DataStore::DbTransaction(std::function<bool(QSqlDatabase 
     }
 }
 
-std::optional<QList<schema::EhBackupImport>> DataStore::EhBakDbImport(QSqlDatabase *ehdb) {
+std::optional<QList<schema::EhBackupImport>>
+DataStore::EhBakDbImport(QSqlDatabase *ehdb) {
     QList<schema::EhBackupImport> ret;
     QSqlQuery query{*ehdb};
-    QString sql = "SELECT downloads.gid as gid, token, title, title_jpn, thumb, category, posted, uploader, rating,"
+    QString sql = "SELECT downloads.gid as gid, token, title, title_jpn, thumb, "
+                  "category, posted, uploader, rating,"
                   "       simple_language, state, legacy, time, label, dirname "
                   "FROM downloads LEFT JOIN download_dirname "
                   "ON downloads.gid == download_dirname.gid";
@@ -642,7 +667,8 @@ std::optional<QList<schema::EhBackupImport>> DataStore::EhBakDbImport(QSqlDataba
             .title_jpn = query.value("title_jpn").toString().toStdString(),
             .thumb = query.value("thumb").toString().toStdString(),
             .category =
-                EhentaiApi::CategoryFromEhViewerValue(query.value("category").toInt()).value_or(EhCategory::UNKNOWN),
+                EhentaiApi::CategoryFromEhViewerValue(query.value("category").toInt())
+                    .value_or(EhCategory::UNKNOWN),
             .posted = query.value("posted").toString().toStdString(),
             .uploader = query.value("uploader").toString().toStdString(),
             .rating = query.value("rating").toDouble(),

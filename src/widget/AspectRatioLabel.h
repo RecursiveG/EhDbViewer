@@ -6,7 +6,8 @@
 
 class AspectRatioLabel : public QLabel {
   public:
-    explicit AspectRatioLabel(QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags());
+    explicit AspectRatioLabel(QWidget *parent = nullptr,
+                              Qt::WindowFlags f = Qt::WindowFlags());
     ~AspectRatioLabel();
 
   public slots:

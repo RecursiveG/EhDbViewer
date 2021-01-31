@@ -23,11 +23,13 @@ class FuzzSearcher {
     // return true if success
     bool parsePrefixStem(QString s, QStringList *prefixes, QString *stem);
     template <typename T>
-    QList<T> filterMatching(const QList<T> &list, QString base, const std::function<QString(const T &)> &key) {
+    QList<T> filterMatching(const QList<T> &list, QString base,
+                            const std::function<QString(const T &)> &key) {
         QList<T> ret;
         QStringList prefixes;
         QString stem;
-        QRegularExpression non_word_char{"\\W", QRegularExpression::UseUnicodePropertiesOption};
+        QRegularExpression non_word_char{"\\W",
+                                         QRegularExpression::UseUnicodePropertiesOption};
         QRegularExpression ignore_prefix{"^[cC][0-9]{2}$"}; // C89 etc.
 
         base = Nfkc(base);
@@ -73,7 +75,8 @@ class FuzzSearcher {
                 if (s.length() < min_match_threshold_) {
                     matches = !(ignore_too_short_candidates_) && lcs_len >= min_len;
                 } else {
-                    matches = lcs_len >= min_match_length_ && lcs_len > min_len * min_match_threshold_;
+                    matches = lcs_len >= min_match_length_ &&
+                              lcs_len > min_len * min_match_threshold_;
                 }
             }
 
@@ -84,7 +87,8 @@ class FuzzSearcher {
     }
 
   private:
-    QString parenthesis_ = "()[]{}“”‹›«»（）［］｛｝｟｠「」〈〉《》【】〔〕⦗⦘『』〖〗〘〙｢｣";
+    QString parenthesis_ = QString::fromUtf8(
+        "()[]{}“”‹›«»（）［］｛｝｟｠「」〈〉《》【】〔〕⦗⦘『』〖〗〘〙｢｣");
     QMap<QChar, QChar> mapping_; // map from open bracket to closing bracket
     QSet<QChar> opennings_;
     QSet<QChar> closings_;

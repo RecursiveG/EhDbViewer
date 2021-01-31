@@ -97,7 +97,8 @@ struct EhentaiMetadata {
     qlonglong expunged; // 1 for true, 0 for false
     double rating;
     // Extra data
-    qlonglong meta_updated; // unix timestamp, second, when does the data for this gid is pull
+    qlonglong
+        meta_updated; // unix timestamp, second, when does the data for this gid is pull
 
     static int SchemaRevision() { return 1; }
     static QString TableName() { return "ehentai_metadata"; }

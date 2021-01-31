@@ -17,7 +17,8 @@ class TabbedSearchResult : public QTabWidget {
     QList<schema::FolderPreview> getSelection();
 
   public slots:
-    void displaySearchResult(QString query_string, QList<schema::FolderPreview> results, bool in_new_tab);
+    void displaySearchResult(QString query_string, QList<schema::FolderPreview> results,
+                             bool in_new_tab);
 
   signals:
     void selectionChanged(QList<schema::FolderPreview> selected);

@@ -58,7 +58,8 @@ QString EhGalleryMetadata::display() const {
     ret += QString("gid: %1\n").arg(gid);
     ret += QString("title: %1\n").arg(QString::fromStdString(title));
     ret += QString("title_jpn: %1\n").arg(QString::fromStdString(title_jpn));
-    ret += QString("category: %1\n").arg(QString::fromStdString(EhentaiApi::CategoryToString(category)));
+    ret += QString("category: %1\n")
+               .arg(QString::fromStdString(EhentaiApi::CategoryToString(category)));
     ret += QString("rating: %1\n").arg(rating);
     ret += QString("uploader: %1\n").arg(QString::fromStdString(uploader));
     ret += QString("token: %1\n").arg(QString::fromStdString(token));
@@ -81,7 +82,9 @@ std::optional<EhGalleryMetadata> EhGalleryMetadata::parse(const QJsonObject &obj
     bool rating_ok = false;
     EhGalleryMetadata ret;
     ret.archiver_key = obj["archiver_key"].toString().toStdString();
-    ret.category = EhentaiApi::CategoryFromString(obj["category"].toString().toStdString()).value_or(UNKNOWN);
+    ret.category =
+        EhentaiApi::CategoryFromString(obj["category"].toString().toStdString())
+            .value_or(UNKNOWN);
     ret.expunged = obj["expunged"].toBool();
     ret.filecount = obj["filecount"].toString().toLongLong();
     ret.filesize = obj["filesize"].toInt();
@@ -115,8 +118,9 @@ std::optional<EhGalleryMetadata> EhGalleryMetadata::parse(const QJsonObject &obj
 }
 
 namespace {
-const char *kCategoryNameTable[] = {"__unknown__", "Misc",    "Doujinshi",  "Manga", "Artist CG", "Game CG",
-                                    "Image Set",   "Cosplay", "Asian Porn", "Non-H", "Western",   "Private"};
+const char *kCategoryNameTable[] = {"__unknown__", "Misc",    "Doujinshi", "Manga",
+                                    "Artist CG",   "Game CG", "Image Set", "Cosplay",
+                                    "Asian Porn",  "Non-H",   "Western",   "Private"};
 } // namespace
 
 std::string EhentaiApi::CategoryToString(EhCategory c) {
@@ -160,9 +164,16 @@ int EhentaiApi::CategoryToEhViewerValue(EhCategory c) {
 }
 
 std::optional<EhCategory> EhentaiApi::CategoryFromEhViewerValue(int val) {
-    int bit = __builtin_ctz(val) + 1;
-    if (val - (1 << (bit - 1)) != 0)
-        qWarning() << "Lossy convertion from EhViewer category value" << val;
+    if (val == 0)
+        return {};
+    int val_origin = val;
+    int bit = 1;
+    while ((val % 2) == 0) {
+        bit++;
+        val >>= 1;
+    }
+    if (val != 1)
+        qWarning() << "Lossy convertion from EhViewer category value" << val_origin;
     if (bit >= MISC && bit <= WESTERN)
         return EhCategory(bit);
     return {};
@@ -178,8 +189,8 @@ void EhentaiApi::GalleryMetadata(QNetworkAccessManager *nm, int64_t gid, QString
         //            req.setUrl(QUrl{"https://exhentai.org/api.php"});
         //            QVariant cookies;
         //            cookies.setValue(
-        //                QList{QNetworkCookie{"ipb_member_id", mid.toUtf8()}, QNetworkCookie{"ipb_pass_hash",
-        //                phash.toUtf8()}});
+        //                QList{QNetworkCookie{"ipb_member_id", mid.toUtf8()},
+        //                QNetworkCookie{"ipb_pass_hash", phash.toUtf8()}});
         //            req.setHeader(QNetworkRequest::CookieHeader, cookies);
         //        }
         QNetworkRequest req{QUrl{"https://e-hentai.org/api.php"}};
