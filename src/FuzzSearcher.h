@@ -1,12 +1,15 @@
 #ifndef FUZZSEARCHER_H
 #define FUZZSEARCHER_H
+
 #include <QChar>
 #include <QDebug>
 #include <QMap>
 #include <QRegularExpression>
 #include <QSet>
 #include <QString>
+
 #include <algorithm>
+#include <functional>
 
 class FuzzSearcher {
   public:

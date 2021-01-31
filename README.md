@@ -6,4 +6,6 @@
 - storage format not stable
 - 备份 备份 备份
 - 不会写 CSS 的我只能用 Qt 写 C++ 了
+- Qt 5.15.2
 
+MSVC 用户：`/utf-8 /std::c++latest`

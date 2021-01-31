@@ -6,7 +6,9 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QObject>
+
 #include <functional>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>

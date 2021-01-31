@@ -1,13 +1,14 @@
 #ifndef DATAIMPORTER_H
 #define DATAIMPORTER_H
 
-#include <optional>
-#include <vector>
-
 #include <QDateTime>
 #include <QDir>
 #include <QProgressDialog>
-#include <QThread>
+#include <QString>
+#include <QStringList>
+
+#include <optional>
+#include <vector>
 
 class DataImporter {
   public:

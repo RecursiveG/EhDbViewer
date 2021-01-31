@@ -1,6 +1,7 @@
 #include "FuzzSearcher.h"
-#include <cinttypes>
+
 #include <memory>
+#include <stdexcept>
 
 QString FuzzSearcher::Lcs(const QString &a, const QString &b) {
     if (a.isEmpty() || b.isEmpty())
