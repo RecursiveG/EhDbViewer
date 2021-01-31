@@ -1,10 +1,27 @@
 #ifndef TABBEDSEARCHRESULT_H
 #define TABBEDSEARCHRESULT_H
 
+#include <optional>
+
 #include <QItemSelection>
 #include <QTabWidget>
+#include <QTableView>
 
 #include "data/DatabaseSchema.h"
+
+class MouseHoverAwareTableView : public QTableView {
+    Q_OBJECT
+  public:
+    MouseHoverAwareTableView(QWidget *parent) : QTableView(parent) {
+        this->setMouseTracking(true);
+    }
+    void mouseMoveEvent(QMouseEvent *ev) override;
+  signals:
+    void hoveredIndexChanged(QModelIndex new_index);
+
+  private:
+    int previous_hover_row_ = -1;
+};
 
 class TabbedSearchResult : public QTabWidget {
     Q_OBJECT
@@ -22,6 +39,7 @@ class TabbedSearchResult : public QTabWidget {
 
   signals:
     void selectionChanged(QList<schema::FolderPreview> selected);
+    void hoverChanged(std::optional<schema::FolderPreview> hovered);
     void tabChanged(QString current_query_string);
     void queryRequested(QString query);
 
@@ -29,6 +47,7 @@ class TabbedSearchResult : public QTabWidget {
     void onTableSelectionChanged(const QItemSelection &, const QItemSelection &);
     void onTableContextMenuRequested(const QPoint &pos);
     void onTableDoubleClicked(const QModelIndex &index);
+    void onTableHoveredRowChanged(QModelIndex idx);
     void onTabChanged(int index);
     void onTabCloseRequested(int index);
 };

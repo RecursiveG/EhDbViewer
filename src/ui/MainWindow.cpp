@@ -75,6 +75,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             &MainWindow::onSearchResultTabChanged);
     connect(ui->tabSearchResult, &TabbedSearchResult::selectionChanged, this,
             &MainWindow::onSearchResultSelectionChanged);
+    connect(ui->tabSearchResult, &TabbedSearchResult::hoverChanged, this,
+            &MainWindow::onHoveredItemChanged);
 
     connect(ui->btnListFullDatabase, &QPushButton::clicked,
             [this] { newSearch("all:"); });
@@ -256,6 +258,20 @@ void MainWindow::onSearchResultSelectionChanged(
     } else {
         ui->txtMetadataDisplay->setText("Err: More than one selected");
         ui->labelPreview->setText("Err: More than one selected");
+    }
+}
+
+void MainWindow::onHoveredItemChanged(std::optional<schema::FolderPreview> item) {
+    if (item) {
+        QPixmap pixmap;
+        pixmap.loadFromData(QByteArray::fromBase64(item->cover_base64.toUtf8()));
+        if (pixmap.isNull()) {
+            // TODO error,
+            return;
+        }
+        ui->labelHoverPreview->setPixmap(pixmap);
+    } else {
+        ui->labelHoverPreview->setText("No preview");
     }
 }
 

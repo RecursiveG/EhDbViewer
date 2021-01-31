@@ -29,6 +29,7 @@ class MainWindow : public QMainWindow {
     void onSearchBarEnterPressed();
     void onSearchResultTabChanged(QString new_tab_query);
     void onSearchResultSelectionChanged(QList<schema::FolderPreview> new_selections);
+    void onHoveredItemChanged(std::optional<schema::FolderPreview> item);
 
   private slots:
     void on_actionImportFolder_triggered();

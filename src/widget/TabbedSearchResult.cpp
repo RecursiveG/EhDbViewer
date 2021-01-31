@@ -4,6 +4,8 @@
 #include <QHeaderView>
 #include <QMenu>
 #include <QMessageBox>
+#include <QModelIndex>
+#include <QMouseEvent>
 #include <QStandardItemModel>
 #include <QTableView>
 
@@ -25,6 +27,16 @@ class SearchResultItem : public QStandardItem {
     schema::FolderPreview schema_;
 };
 } // namespace
+
+void MouseHoverAwareTableView::mouseMoveEvent(QMouseEvent *ev) {
+    QModelIndex idx = this->indexAt(ev->pos());
+    int row = idx.row();
+    if (row != previous_hover_row_) {
+        emit hoveredIndexChanged(idx);
+        previous_hover_row_ = row;
+    }
+    QTableView::mouseMoveEvent(ev);
+}
 
 TabbedSearchResult::TabbedSearchResult(QWidget *parent) : QTabWidget(parent) {
     this->setTabsClosable(true);
@@ -101,7 +113,7 @@ void TabbedSearchResult::displaySearchResult(QString query_string,
 
     if (this->count() == 0 || in_new_tab) {
         int insert_index = this->currentIndex() + 1;
-        QTableView *table = new QTableView(this);
+        MouseHoverAwareTableView *table = new MouseHoverAwareTableView(this);
         set_table_model(table);
 
         connect(table, &QTableView::doubleClicked, this,
@@ -110,6 +122,8 @@ void TabbedSearchResult::displaySearchResult(QString query_string,
                 &TabbedSearchResult::onTableContextMenuRequested);
         connect(table->selectionModel(), &QItemSelectionModel::selectionChanged, this,
                 &TabbedSearchResult::onTableSelectionChanged);
+        connect(table, &MouseHoverAwareTableView::hoveredIndexChanged, this,
+                &TabbedSearchResult::onTableHoveredRowChanged);
 
         table->setContextMenuPolicy(Qt::CustomContextMenu);
         table->verticalHeader()->setVisible(false);
@@ -231,6 +245,24 @@ void TabbedSearchResult::onTableDoubleClicked(const QModelIndex &) {
             }
         }
     }
+}
+
+void TabbedSearchResult::onTableHoveredRowChanged(QModelIndex index) {
+    if (index.row() < 0) {
+        emit hoverChanged({});
+        return;
+    }
+    const auto *model = qobject_cast<const QStandardItemModel *>(index.model());
+    if (model == nullptr) {
+        emit hoverChanged({});
+        return;
+    }
+    auto *item = dynamic_cast<SearchResultItem *>(model->item(index.row()));
+    if (item == nullptr) {
+        emit hoverChanged({});
+        return;
+    }
+    emit hoverChanged(item->schema());
 }
 
 void TabbedSearchResult::onTabChanged(int) {
